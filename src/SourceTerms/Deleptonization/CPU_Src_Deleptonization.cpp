@@ -1,7 +1,19 @@
+#include "EoS.h"
 #include "CUFLU.h"
+#include "NuclearEoS.h"
+
+
+#define SRC_AUX_ESHIFT              0
+#define SRC_AUX_DENS2CGS            1
+#define SRC_AUX_VSQR2CGS            2
+#define SRC_AUX_DELEP_ENU           3
+#define SRC_AUX_DELEP_RHO1          4
+#define SRC_AUX_DELEP_RHO2          5
+#define SRC_AUX_DELEP_YE1           6
+#define SRC_AUX_DELEP_YE2           7
+#define SRC_AUX_DELEP_YEC           8
 
 #if ( MODEL == HYDRO )
-
 
 
 // external functions and GPU-related set-up
@@ -28,7 +40,9 @@ void Src_PassData2GPU_Deleptonization();
 
 #endif
 
-
+GPU_DEVICE static
+real YeOfRhoFunc( const real DENS_CGS, const real DELEP_RHO1, const real DELEP_RHO2, 
+                  const real DELEP_YE1, const real DELEP_YE2, const real DELEP_YEC );
 
 /********************************************************
 1. Deleptonization source term
@@ -72,7 +86,17 @@ void Src_PassData2GPU_Deleptonization();
 void Src_SetAuxArray_Deleptonization( double AuxArray_Flt[], int AuxArray_Int[] )
 {
 
-// TBF
+#ifdef DELEPTONIZATION
+   AuxArray_Flt[SRC_AUX_ESHIFT            ] = EoS_AuxArray_Flt[NUC_AUX_ESHIFT];
+   AuxArray_Flt[SRC_AUX_DENS2CGS          ] = UNIT_D;
+   AuxArray_Flt[SRC_AUX_VSQR2CGS          ] = SQR( UNIT_V );
+   AuxArray_Flt[SRC_AUX_DELEP_ENU         ] = DELEP_ENU;
+   AuxArray_Flt[SRC_AUX_DELEP_RHO1        ] = DELEP_RHO1;
+   AuxArray_Flt[SRC_AUX_DELEP_RHO2        ] = DELEP_RHO2;
+   AuxArray_Flt[SRC_AUX_DELEP_YE1         ] = DELEP_YE1;
+   AuxArray_Flt[SRC_AUX_DELEP_YE2         ] = DELEP_YE2;
+   AuxArray_Flt[SRC_AUX_DELEP_YEC         ] = DELEP_YEC;
+#endif
 
 } // FUNCTION : Src_SetAuxArray_Deleptonization
 #endif // #ifndef __CUDACC__
@@ -122,9 +146,124 @@ static void Src_Deleptonization( real fluid[], const real B[],
    if ( AuxArray_Int == NULL )   printf( "ERROR : AuxArray_Int == NULL in %s !!\n", __FUNCTION__ );
 #  endif
 
+#ifdef DELEPTONIZATION
+   const real EnergyShift  = AuxArray_Flt[SRC_AUX_ESHIFT    ];
+   const real Dens2CGS     = AuxArray_Flt[SRC_AUX_DENS2CGS  ];
+   const real sEint2CGS    = AuxArray_Flt[SRC_AUX_VSQR2CGS  ];
+   const real DELEP_ENU    = AuxArray_Flt[SRC_AUX_DELEP_ENU ];
+   const real DELEP_RHO1   = AuxArray_Flt[SRC_AUX_DELEP_RHO1];
+   const real DELEP_RHO2   = AuxArray_Flt[SRC_AUX_DELEP_RHO2];
+   const real DELEP_YE1    = AuxArray_Flt[SRC_AUX_DELEP_YE1 ];
+   const real DELEP_YE2    = AuxArray_Flt[SRC_AUX_DELEP_YE2 ];
+   const real DELEP_YEC    = AuxArray_Flt[SRC_AUX_DELEP_YEC ];
+
+   
+
 // TBF
 // profiles are stored in SrcTerms->Dlep_Profile_DataDevPtr/Dlep_Profile_RadiusDevPtr/Dlep_Profile_NBin
 // --> see "include/SrcTerms.h"
+
+#  if ( EOS == EOS_NUCLEAR )
+
+   const real Delep_minDens_CGS  = 1.e6; // [g/cm^3]
+   const real Q = 1.293333;
+
+   real Del_Ye   = 0.0;
+   real Del_Entr = 0.0;
+
+   // output Ye
+   real Yout = NULL_REAL;
+
+   if ( EoS->EOS_POSTBOUNCE )
+   {
+      return;
+   }
+
+   // Deleptonization
+   
+   // code units
+   const real Dens_Code = fluid[DENS];
+   real Eint_Code       = fluid[ENGY];
+   real Pres_Code       = NULL_REAL;
+   real Ye              = fluid[YE - NCOMP_FLUID] / Dens_Code;
+
+   // cgs units
+   real DENS_CGS  = Dens_Code * Dens2CGS;
+   Eint_Code      = Eint_Code - 0.5 * ( SQR(fluid[MOMX] ) + SQR( fluid[MOMY] ) + SQR( fluid[MOMZ] ) ) / Dens_Code; // internal energy
+   real sEint_CGS = ( Eint_Code * sEint2CGS / Dens_Code ) - EnergyShift; // specific internal energy
+   real Entr      = NULL_REAL; // entropy in kb/baryon
+
+   if ( sEint_CGS <= Delep_minDens_CGS )
+   {
+      Del_Ye = 0.0;
+   } else
+   {
+      Yout = YeOfRhoFunc( DENS_CGS, DELEP_RHO1, DELEP_RHO2, 
+                          DELEP_YE1, DELEP_YE2, DELEP_YEC );
+      Del_Ye = Yout - Ye;
+      Del_Ye = MIN( 0.0, Del_Ye ); // Deleptonization cannot increase Ye
+   }
+
+   if ( Del_Ye < 0.0 )
+   {
+   // Nuclear EoSs
+      real ExtraInOut[3];
+      EoS->DensEint2Pres_FuncPtr( Dens_Code, Eint_Code, &Ye, EoS->AuxArrayDevPtr_Flt, EoS->AuxArrayDevPtr_Int,
+                                  EoS->Table, ExtraInOut ); // energy mode
+      real Temp_MeV = ExtraInOut[0];
+      Entr          = ExtraInOut[1];
+      real mu_nu    = ExtraInOut[2];
+      mu_nu += Q;  // add chemical potential
+
+#  ifdef GAMER_DEBUG
+   if ( mu_nu != mu_nu )
+      printf( "ERROR : Couldn't get chemical potential munu (NaN) !!\n" );
+#  endif // GAMER_DEBUG
+
+      if ( ( mu_nu < DELEP_ENU ) || ( Dens_Code >= 2.e12 / Dens2CGS ) ) 
+      {
+         Del_Entr = 0.0;
+      } else 
+      {
+         Del_Entr = - Del_Ye * ( mu_nu - DELEP_ENU ) / Temp_MeV;
+      }
+
+      fluid[ENTR] = Dens_Code * ( Entr + Del_Entr );
+      fluid[YE]   = Dens_Code * ( Ye + Del_Ye );
+
+      Entr = Entr + Del_Entr;
+      Ye   = Ye + Del_Ye;
+
+      // input and output arrays for Nuclear EoS
+      real In[3];
+      real Out[1];
+      In[0]  = Dens_Code; // density in code units
+      In[1]  = Entr;      // entropy in kb/baryon
+      In[2]  = Ye;        // electron fraction
+      Out[0] = NULL_REAL; // volume energy density in code units (with energy shift)
+
+      // Nuclear EoS
+      EoS->General_FuncPtr( NUC_MODE_ENTR, Out, In, EoS->AuxArrayDevPtr_Flt, EoS->AuxArrayDevPtr_Int, 
+                            EoS->Table ); // entropy mode 
+
+      Eint_Code = Out[0]; // volume energy density in code units (with energy shift)
+      fluid[ENGY] = Eint_Code + 0.5 * ( SQR(fluid[MOMX]) + SQR(fluid[MOMY]) + SQR(fluid[MOMZ]) ) / fluid[DENS];
+   
+// final check
+#  ifdef GAMER_DEBUG
+   if ( Hydro_CheckNegative(Eint_Code) )
+   {
+      printf( "ERROR : invalid output internal energy density (%13.7e) in %s() !!\n", Eint_Code, __FUNCTION__ );
+      printf( "        Dens=%13.7e, Pres=%13.7e\n", Dens_Code, Pres_Code );
+   }
+#  endif // GAMER_DEBUG
+
+    } // if ( Del_Ye < 0.0 )
+
+#  endif // # ifdef DELEPTONIZATION
+
+#  endif // # if ( EOS == EOS_NUCLEAR )
+
 
 } // FUNCTION : Src_Deleptonization
 
@@ -387,6 +526,38 @@ void Src_End_Deleptonization()
 
 #endif // #ifndef __CUDACC__
 
+
+
+
+
+
+//-----------------------------------------------------------------------------------------
+// Function    :  YeOfRhoFunc
+// Description :  Calculate electron fraction Ye from the density
+//
+// Note        :  1. Invoked by Src_End()
+//                2. Add "#ifndef __CUDACC__" since this routine is only useful on CPU
+//
+// Parameter   :  xdens : density in CGS from which Ye is caculated
+//
+// Return      :  YeOfRhoFunc
+//-----------------------------------------------------------------------------------------
+GPU_DEVICE static
+real YeOfRhoFunc( const real DENS_CGS, const real DELEP_RHO1, const real DELEP_RHO2, 
+                  const real DELEP_YE1, const real DELEP_YE2, const real DELEP_YEC )
+{
+
+   real XofRho, Ye;
+
+   XofRho = 2.0 * LOG10( DENS_CGS ) - LOG10( DELEP_RHO2 ) - LOG10( DELEP_RHO1 );
+   XofRho = XofRho / ( LOG10( DELEP_RHO2 ) - LOG10( DELEP_RHO1 ) );
+   XofRho = MAX( -1.0, MIN( 1.0, XofRho ) );
+   Ye = 0.5 * ( DELEP_YE2 + DELEP_YE1 ) + 0.5 * XofRho * ( DELEP_YE2 - DELEP_YE1 );
+   Ye = Ye + DELEP_YEC * ( 1.0 - FABS( XofRho ) );
+   Ye = Ye + DELEP_YEC * 4.0 * FABS( XofRho ) * ( FABS( XofRho ) - 0.5 ) * ( FABS( XofRho ) - 1.0 );
+   return Ye;
+
+}
 
 
 #endif // #if ( MODEL == HYDRO )
