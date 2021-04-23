@@ -259,8 +259,8 @@
 # if ( EOS == EOS_NUCLEAR )
 #  define YE                  ( PASSIVE_NEXT_IDX2 )
 #  define PASSIVE_NEXT_IDX3   ( YE - 1            )
-#  define ENTR                ( PASSIVE_NEXT_IDX3 )
-#  define PASSIVE_NEXT_IDX4   ( ENTR - 1          )
+#  define ENPY                ( PASSIVE_NEXT_IDX3 )
+#  define PASSIVE_NEXT_IDX4   ( ENPY - 1          )
 # else
 #  define PASSIVE_NEXT_IDX3   ( PASSIVE_NEXT_IDX2 )
 # endif
@@ -307,8 +307,8 @@
 # if ( EOS == EOS_NUCLEAR )
 #  define FLUX_YE          ( FLUX_NEXT_IDX2  )
 #  define FLUX_NEXT_IDX3   ( FLUX_YE - 1     )
-#  define FLUX_ENTR        ( FLUX_NEXT_IDX3  )
-#  define FLUX_NEXT_IDX4   ( FLUX_ENTR - 1   )
+#  define FLUX_ENPY        ( FLUX_NEXT_IDX3  )
+#  define FLUX_NEXT_IDX4   ( FLUX_ENPY - 1   )
 # else
 #  define FLUX_NEXT_IDX3   ( FLUX_NEXT_IDX2  )
 # endif
@@ -338,7 +338,7 @@
 # endif
 
 # if ( EOS == EOS_NUCLEAR )
-#  define _ENTR               ( 1L << ENTR )
+#  define _ENPY               ( 1L << ENPY )
 #  define _YE                 ( 1L << YE   )
 # endif
 
@@ -374,7 +374,7 @@
 # endif
 
 # if ( EOS == EOS_NUCLEAR )
-#  define _FLUX_ENTR          ( 1L << FLUX_ENTR )
+#  define _FLUX_ENPY          ( 1L << FLUX_ENPY )
 #  define _FLUX_YE            ( 1L << FLUX_YE   )
 # endif
 

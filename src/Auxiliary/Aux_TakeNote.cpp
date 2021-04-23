@@ -856,6 +856,7 @@ void Aux_TakeNote()
       fprintf( Note, "***********************************************************************************\n" );
       fprintf( Note, "SRC_ANY                         %d\n",      SrcTerms.Any              );
       fprintf( Note, "SRC_DELEPTONIZATION             %d\n",      SrcTerms.Deleptonization  );
+      fprintf( Note, "SRC_LIGHTBULB                   %d\n",      SrcTerms.LightBulb        );
       fprintf( Note, "SRC_USER                        %d\n",      SrcTerms.User             );
       fprintf( Note, "SRC_GPU_NPGROUP                 %d\n",      SRC_GPU_NPGROUP           );
       fprintf( Note, "***********************************************************************************\n" );

@@ -217,6 +217,7 @@ static real EoS_DensEint2Pres_Nuclear( const real Dens_Code, const real Eint_Cod
    real Temp_MeV  = NULL_REAL;
    real Entr      = NULL_REAL;
    real Pres_CGS  = NULL_REAL;
+   real mu_nu     = NULL_REAL;
    real Useless   = NULL_REAL;
    int  Err       = NULL_INT;
 
@@ -238,7 +239,7 @@ static real EoS_DensEint2Pres_Nuclear( const real Dens_Code, const real Eint_Cod
 
 
 // invoke the nuclear EoS driver
-   nuc_eos_C_short( Dens_CGS, &sEint_CGS, Ye, &Temp_MeV, &Entr, &Pres_CGS, &Useless, &Useless,
+   nuc_eos_C_short( Dens_CGS, &sEint_CGS, Ye, &Temp_MeV, &Entr, &Pres_CGS, &Useless, &mu_nu,
                     EnergyShift, NRho, NEps, NYe, NMode,
                     Table[NUC_TAB_ALL], Table[NUC_TAB_ALL_MODE], Table[NUC_TAB_RHO], Table[NUC_TAB_EPS],
                     Table[NUC_TAB_YE], Table[NUC_TAB_TEMP_MODE], Table[NUC_TAB_ENTR_MODE], Table[NUC_TAB_PRES_MODE],
@@ -250,6 +251,7 @@ static real EoS_DensEint2Pres_Nuclear( const real Dens_Code, const real Eint_Cod
       Temp_MeV = NAN;
       Entr     = NAN;
       Pres_CGS = NAN;
+      mu_nu    = NAN;
    }
 
    const real Temp_Kelv = Temp_MeV * MeV2Kelvin;
@@ -286,6 +288,7 @@ static real EoS_DensEint2Pres_Nuclear( const real Dens_Code, const real Eint_Cod
    {
       ExtraInOut[0] = Temp_Kelv;
       ExtraInOut[1] = Entr;
+      ExtraInOut[2] = mu_nu;
    }
 
 

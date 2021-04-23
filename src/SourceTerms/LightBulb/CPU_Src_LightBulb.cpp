@@ -162,6 +162,7 @@ static void Src_LightBulb( real fluid[], const real B[],
    const int  NRho          = EoS->AuxArrayDevPtr_Int[NUC_AUX_NRHO ];
    const int  NEps          = EoS->AuxArrayDevPtr_Int[NUC_AUX_NEPS ];
    const int  NYe           = EoS->AuxArrayDevPtr_Int[NUC_AUX_NYE  ];
+   const int  NMode         = EoS->AuxArrayDevPtr_Int[NUC_AUX_NMODE];
 
    real UNIT_L = SrcTerms->Unit_L;
    real UNIT_T = SrcTerms->Unit_T;
@@ -197,8 +198,8 @@ static void Src_LightBulb( real fluid[], const real B[],
    real Temp_MeV = ExtraInOut[0];
 
 
-   real logd = MIN(MAX(Dens_CGS, EoS->Table[NUC_TAB_RHO] [0]), EoS->Table[NUC_TAB_RHO ][NRho] );
-   real logt = MIN(MAX(Temp_MeV, EoS->Table[NUC_TAB_TEMP][0]), EoS->Table[NUC_TAB_TEMP][NEps]);
+   real logd = MIN(MAX(Dens_CGS, EoS->Table[NUC_TAB_RHO      ][0]), EoS->Table[NUC_TAB_RHO      ][NRho] );
+   real logt = MIN(MAX(Temp_MeV, EoS->Table[NUC_TAB_TEMP_MODE][0]), EoS->Table[NUC_TAB_TEMP_MODE][NMode]);
    logd = LOG10(logd);
    logt = LOG10(logt);
 
@@ -242,7 +243,7 @@ static void Src_LightBulb( real fluid[], const real B[],
    real Entr     = ExtraInOut[1];
 
    // update entropy using the new energy
-   fluid[ENTR] = Dens_Code * Entr; 
+   fluid[ENPY] = Dens_Code * Entr; 
    fluid[YE]   = Dens_Code * Ye;  // lb doesn't change ye
 
 //   // if using Dual energy

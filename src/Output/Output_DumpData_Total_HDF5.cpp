@@ -210,6 +210,7 @@ Procedure for outputting new variables:
 //                2437 : 2021/02/14 --> output MIN_TEMP
 //                2438 : 2021/02/16 --> output OPT__OUTPUT_ENTR
 //                2439 : 2021/03/12 --> output OPT__INT_FRAC_PASSIVE_LR, PassiveIntFrac_NVar, and PassiveIntFrac_VarIdx
+//                2440 : 2021/04/21 --> output SRC_LIGHTBULB
 //-------------------------------------------------------------------------------------------------------
 void Output_DumpData_Total_HDF5( const char *FileName )
 {
@@ -2521,6 +2522,7 @@ void FillIn_InputPara( InputPara_t &InputPara )
 
 // source terms
    InputPara.Src_Deleptonization     = SrcTerms.Deleptonization;
+   InputPara.Src_LightBulb           = SrcTerms.LightBulb;
    InputPara.Src_User                = SrcTerms.User;
    InputPara.Src_GPU_NPGroup         = SRC_GPU_NPGROUP;
 

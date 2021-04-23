@@ -16,6 +16,8 @@ static double *NeutronStar_Prof = NULL;         // radial progenitor model
 static int     NeutronStar_NBin;                // number of radial bins in the progenitor model
 static char    NeutronStar_ICFile[MAX_STRING];  // Filename of initial condition
 
+static int     Num_SubSampling;                 // Number of sub-grid in each dimension for sub-sampling
+
 // Use Temp/Pres Mode for internal energy in SetGridIC
 static bool Use_Temp_Mode = false;
 // =======================================================================================
@@ -114,6 +116,7 @@ void SetParameter()
 // ********************************************************************************************************************************
    ReadPara->Add( "NeutronStar_ICFile",   NeutronStar_ICFile,    Useless_str,   Useless_str,      Useless_str       );
    ReadPara->Add( "Use_Temp_Mode",       &Use_Temp_Mode,         false,         Useless_bool,     Useless_bool      );
+   ReadPara->Add( "Num_SubSampling",     &Num_SubSampling,       1,             1,                100               );
 #  ifdef MHD
    ReadPara->Add( "Bfield_Ab",           &Bfield_Ab,             1.0e15,        0.0,              NoMax_double      );
    ReadPara->Add( "Bfield_np",           &Bfield_np,             0.0,           NoMin_double,     NoMax_double      );
@@ -154,6 +157,7 @@ void SetParameter()
       Aux_Message( stdout, "  test problem ID           = %d\n",      TESTPROB_ID          );
       Aux_Message( stdout, "  NeutronStar_ICFile        = %s\n",      NeutronStar_ICFile   );
       Aux_Message( stdout, "  Use_Temp_Mode             = %d\n",      Use_Temp_Mode        );
+      Aux_Message( stdout, "  Num_SubSampling           = %d\n",      Num_SubSampling        );
 #     ifdef MHD
       Aux_Message( stdout, "  Bfield_Ab                 = %13.7e\n",  Bfield_Ab );
       Aux_Message( stdout, "  Bfield_np                 = %13.7e\n",  Bfield_np );
@@ -192,6 +196,9 @@ void SetGridIC( real fluid[], const double x, const double y, const double z, co
 {
 
    const double  BoxCenter[3] = { 0.5*amr->BoxSize[0], 0.5*amr->BoxSize[1], 0.5*amr->BoxSize[2] };
+   const double  dh           = amr->dh[lv];
+   const double  dh_sub       = dh / Num_SubSampling;
+
    const double *Table_R      = NeutronStar_Prof + 0*NeutronStar_NBin;
    const double *Table_Dens   = NeutronStar_Prof + 1*NeutronStar_NBin;
    const double *Table_Ye     = NeutronStar_Prof + 2*NeutronStar_NBin;
@@ -200,82 +207,101 @@ void SetGridIC( real fluid[], const double x, const double y, const double z, co
    const double *Table_Pres   = NeutronStar_Prof + 5*NeutronStar_NBin;
    const double *Table_Entr   = NeutronStar_Prof + 6*NeutronStar_NBin;
 
-   const double x0 = x - BoxCenter[0];
-   const double y0 = y - BoxCenter[1];
-   const double z0 = z - BoxCenter[2];
-   const double r  = SQRT( SQR( x0 ) + SQR( y0 ) + SQR( z0 ) );
+   double Dens, Momx, Momy, Momz, Eint, Etot, Ye, Pres, Temp, Entr;
+   Dens = Momx = Momy = Momz = Ye = Pres = Temp = Entr = 0.0;
 
-   double Dens, Velr, Pres, Momx, Momy, Momz, Eint, Etot, Temp, Ye, Entr;
+// obtain the quantities in each sub-sampling zone
+   for (int i=0; i< Num_SubSampling; i++)   {  const double x0 = x - BoxCenter[0] - 0.5 * dh + 0.5 * dh_sub * (2 * i + 1);
+   for (int j=0; j< Num_SubSampling; j++)   {  const double y0 = y - BoxCenter[1] - 0.5 * dh + 0.5 * dh_sub * (2 * j + 1);
+   for (int k=0; k< Num_SubSampling; k++)   {  const double z0 = z - BoxCenter[2] - 0.5 * dh + 0.5 * dh_sub * (2 * k + 1);
 
-   Dens = Mis_InterpolateFromTable(NeutronStar_NBin, Table_R, Table_Dens, r);
-   Velr = Mis_InterpolateFromTable(NeutronStar_NBin, Table_R, Table_Velr, r);
-   Pres = Mis_InterpolateFromTable(NeutronStar_NBin, Table_R, Table_Pres, r);
-   Temp = Mis_InterpolateFromTable(NeutronStar_NBin, Table_R, Table_Temp, r);  // in Kelvin
-   Ye   = Mis_InterpolateFromTable(NeutronStar_NBin, Table_R, Table_Ye,   r);
-   Entr = Mis_InterpolateFromTable(NeutronStar_NBin, Table_R, Table_Entr, r);
+      const double r  = SQRT( SQR( x0 ) + SQR( y0 ) + SQR( z0 ) );
 
-   Momx = Dens*Velr*x0/r;
-   Momy = Dens*Velr*y0/r;
-   Momz = Dens*Velr*z0/r;
+      const double Dens_sub = Mis_InterpolateFromTable(NeutronStar_NBin, Table_R, Table_Dens, r);
+      const double Velr_sub = Mis_InterpolateFromTable(NeutronStar_NBin, Table_R, Table_Velr, r);
+      const double Pres_sub = Mis_InterpolateFromTable(NeutronStar_NBin, Table_R, Table_Pres, r);
+      const double Temp_sub = Mis_InterpolateFromTable(NeutronStar_NBin, Table_R, Table_Temp, r);  // in Kelvin
+      const double Ye_sub   = Mis_InterpolateFromTable(NeutronStar_NBin, Table_R, Table_Ye,   r);
+      const double Entr_sub = Mis_InterpolateFromTable(NeutronStar_NBin, Table_R, Table_Entr, r);
 
-// get the internal energy using Nuclear Table
-// Temperature Mode
-   if ( Use_Temp_Mode )
-   {
-      const real mev_to_kelvin = 1.1604447522806e10;
+      Dens += Dens_sub;
+      Momx += Dens_sub*Velr_sub*x0/r;
+      Momy += Dens_sub*Velr_sub*y0/r;
+      Momz += Dens_sub*Velr_sub*z0/r;
+      Pres += Pres_sub;
+      Temp += Temp_sub;
+      Entr += Entr_sub;
+      Ye   += Ye_sub;
 
-      const real EnergyShift = EoS_AuxArray_Flt[NUC_AUX_ESHIFT   ];
-      const real Dens2CGS    = EoS_AuxArray_Flt[NUC_AUX_DENS2CGS ];
-      const real Pres2CGS    = EoS_AuxArray_Flt[NUC_AUX_PRES2CGS ];
-      const real sEint2Code  = EoS_AuxArray_Flt[NUC_AUX_VSQR2CODE];
+   }}} // i, j, k
 
-      const int  NRho        = EoS_AuxArray_Int[NUC_AUX_NRHO  ];
-      const int  NEps        = EoS_AuxArray_Int[NUC_AUX_NEPS  ];
-      const int  NYe         = EoS_AuxArray_Int[NUC_AUX_NYE   ];
-      const int  NMode       = EoS_AuxArray_Int[NUC_AUX_NMODE ];
 
-      int  Mode      = NUC_MODE_TEMP;
-      real Dens_CGS  = Dens * Dens2CGS;
-      real Temp_MeV  = Temp / mev_to_kelvin;
-      real sEint_CGS = NULL_REAL;
-      real Useless   = NULL_REAL;
-      int  Err       = NULL_INT;
+   Dens /= CUBE(Num_SubSampling);
+   Momx /= CUBE(Num_SubSampling);
+   Momy /= CUBE(Num_SubSampling);
+   Momz /= CUBE(Num_SubSampling);
+   Pres /= CUBE(Num_SubSampling);
+   Temp /= CUBE(Num_SubSampling);
+   Entr /= CUBE(Num_SubSampling);
+   Ye   /= CUBE(Num_SubSampling);
 
-      nuc_eos_C_short( Dens_CGS, &sEint_CGS, Ye, &Temp_MeV, &Useless, &Useless, &Useless, &Useless,
-                       EnergyShift, NRho, NEps, NYe, NMode,
-                       h_EoS_Table[NUC_TAB_ALL],       h_EoS_Table[NUC_TAB_ALL_MODE],
-                       h_EoS_Table[NUC_TAB_RHO],       h_EoS_Table[NUC_TAB_EPS],
-                       h_EoS_Table[NUC_TAB_YE],        h_EoS_Table[NUC_TAB_TEMP_MODE],
-                       h_EoS_Table[NUC_TAB_ENTR_MODE], h_EoS_Table[NUC_TAB_PRES_MODE],
-                       Mode, &Err, NULL_REAL );
+//  call Nuclear EoS for the internal energy
+    if ( Use_Temp_Mode )   // Temperature Mode
+    {
+       const real mev_to_kelvin = 1.1604447522806e10;
 
-      if ( Err )  sEint_CGS = NAN;
+       const real EnergyShift = EoS_AuxArray_Flt[NUC_AUX_ESHIFT   ];
+       const real Dens2CGS    = EoS_AuxArray_Flt[NUC_AUX_DENS2CGS ];
+       const real Pres2CGS    = EoS_AuxArray_Flt[NUC_AUX_PRES2CGS ];
+       const real sEint2Code  = EoS_AuxArray_Flt[NUC_AUX_VSQR2CODE];
 
-      Eint = (  ( sEint_CGS + EnergyShift ) * sEint2Code  ) * Dens;
-   }
+       const int  NRho        = EoS_AuxArray_Int[NUC_AUX_NRHO  ];
+       const int  NEps        = EoS_AuxArray_Int[NUC_AUX_NEPS  ];
+       const int  NYe         = EoS_AuxArray_Int[NUC_AUX_NYE   ];
+       const int  NMode       = EoS_AuxArray_Int[NUC_AUX_NMODE ];
 
-   else // Pressure Mode
-   {
-      real *Passive = new real [NCOMP_PASSIVE];
+       int  Mode      = NUC_MODE_TEMP;
+       real Dens_CGS  = Dens * Dens2CGS;
+       real Temp_MeV  = Temp / mev_to_kelvin;
+       real sEint_CGS = NULL_REAL;
+       real Useless   = NULL_REAL;
+       int  Err       = NULL_INT;
 
-      Passive[ YE - NCOMP_FLUID ] = Ye*Dens;
+       nuc_eos_C_short( Dens_CGS, &sEint_CGS, Ye, &Temp_MeV, &Useless, &Useless, &Useless, &Useless,
+                        EnergyShift, NRho, NEps, NYe, NMode,
+                        h_EoS_Table[NUC_TAB_ALL],       h_EoS_Table[NUC_TAB_ALL_MODE],
+                        h_EoS_Table[NUC_TAB_RHO],       h_EoS_Table[NUC_TAB_EPS],
+                        h_EoS_Table[NUC_TAB_YE],        h_EoS_Table[NUC_TAB_TEMP_MODE],
+                        h_EoS_Table[NUC_TAB_ENTR_MODE], h_EoS_Table[NUC_TAB_PRES_MODE],
+                        Mode, &Err, NULL_REAL );
 
-      Eint = EoS_DensPres2Eint_CPUPtr( Dens, Pres, Passive, EoS_AuxArray_Flt,
-                                       EoS_AuxArray_Int, h_EoS_Table );
+       if ( Err )  sEint_CGS = NAN;
 
-      delete [] Passive;
-   }
+       Eint = (  ( sEint_CGS + EnergyShift ) * sEint2Code  ) * Dens;
+    }
 
-   if ( Hydro_CheckNegative(Eint) )
-   {
-      printf( "ERROR : invalid output internal energy density (%13.7e) in %s() !!\n", Eint, __FUNCTION__  );
-      printf( "        Dens_Code=%13.7e, Pres_Code=%13.7e\n",                   Dens,        Pres              );
-      printf( "        Dens_CGS =%13.7e, Pres_CGS =%13.7e, Temp_CGS =%13.7e\n", Dens*UNIT_D, Pres*UNIT_P, Temp );
-      printf( "        Ye       =%13.7e, Passive  =%13.7e\n",                   Ye,          Ye*Dens           );
+    else   // Pressure Mode
+    {
+       real *Passive = new real [NCOMP_PASSIVE];
 
-      if ( Use_Temp_Mode )   Aux_Error( ERROR_INFO, "Failure in Temp Mode !!\n");
-      else                   Aux_Error( ERROR_INFO, "Failure in Pres Mode !!\n");
-   }
+       Passive[ YE - NCOMP_FLUID ] = Ye*Dens;
+
+       Eint = EoS_DensPres2Eint_CPUPtr( Dens, Pres, Passive,
+                                        EoS_AuxArray_Flt, EoS_AuxArray_Int, h_EoS_Table, NULL );
+
+       delete [] Passive;
+    }
+
+    if ( Hydro_CheckNegative(Eint) )
+    {
+       printf( "ERROR : invalid output internal energy density (%13.7e) in %s() !!\n", Eint, __FUNCTION__       );
+       printf( "        Dens_Code=%13.7e, Pres_Code=%13.7e\n",                   Dens,        Pres              );
+       printf( "        Dens_CGS =%13.7e, Pres_CGS =%13.7e, Temp_CGS =%13.7e\n", Dens*UNIT_D, Pres*UNIT_P, Temp );
+       printf( "        Ye       =%13.7e, Passive  =%13.7e\n",                   Ye,          Ye*Dens           );
+
+       if ( Use_Temp_Mode )   Aux_Error( ERROR_INFO, "Failure in Temp Mode !!\n");
+       else                   Aux_Error( ERROR_INFO, "Failure in Pres Mode !!\n");
+    }
 
 
    Etot = Hydro_ConEint2Etot( Dens, Momx, Momy, Momz, Eint, 0.0 );  // do NOT include magnetic energy here

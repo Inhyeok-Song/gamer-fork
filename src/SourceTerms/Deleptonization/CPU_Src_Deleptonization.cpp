@@ -228,7 +228,7 @@ static void Src_Deleptonization( real fluid[], const real B[],
          Del_Entr = - Del_Ye * ( mu_nu - DELEP_ENU ) / Temp_MeV;
       }
 
-      fluid[ENTR] = Dens_Code * ( Entr + Del_Entr );
+      fluid[ENPY] = Dens_Code * ( Entr + Del_Entr );
       fluid[YE]   = Dens_Code * ( Ye + Del_Ye );
 
       Entr = Entr + Del_Entr;

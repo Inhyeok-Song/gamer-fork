@@ -1409,6 +1409,13 @@ void Aux_Check_Parameter()
 #  if ( MODEL != HYDRO )
    if ( SrcTerms.Deleptonization )
       Aux_Error( ERROR_INFO, "SRC_DELEPTONIZATION is only supported in HYDRO !!\n" );
+   if ( SrcTerms.LightBulb )
+      Aux_Error( ERROR_INFO, "SRC_LIGHTBULB is only supported in HYDRO !!\n" );
+#  endif
+
+#  if ( NEUTRINO_SCHEME != LIGHTBULB )
+   if ( SrcTerms.LightBulb )
+      Aux_Error( ERROR_INFO, "SRC_LIGHTBULB is only supported in NEUTRINO_SCHEME=LIGHTBULB!!\n" );
 #  endif
 
    if ( SRC_GPU_NPGROUP % GPU_NSTREAM != 0 )
