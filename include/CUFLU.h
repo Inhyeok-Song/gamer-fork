@@ -298,7 +298,7 @@
 #     define FLU_BLOCK_SIZE_X       256
 #     else
 #     if ( EOS == EOS_NUCLEAR )
-#     define FLU_BLOCK_SIZE_X       384      // not optimized yet
+#     define FLU_BLOCK_SIZE_X       192      // not optimized yet
 #     else
 #     define FLU_BLOCK_SIZE_X       512      // not optimized yet
 #     endif // EOS
@@ -426,7 +426,7 @@
 #  if ( EOS == EOS_NUCLEAR )
 #     define DT_FLU_BLOCK_SIZE      256
 #  else
-#     define DT_FLU_BLOCK_SIZE      512
+#     define DT_FLU_BLOCK_SIZE      384
 #  endif
 
 // use shuffle reduction in the KEPLER and later GPUs
@@ -437,7 +437,7 @@
 
 // 4. source-term solver
 //=========================================================================================
-#     define SRC_BLOCK_SIZE         512
+#     define SRC_BLOCK_SIZE         256
 
 
 
