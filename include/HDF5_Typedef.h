@@ -539,6 +539,7 @@ struct InputPara_t
 
 // source terms
    int    Src_Deleptonization;
+   int    Src_LightBulb;
    int    Src_User;
    int    Src_GPU_NPGroup;
 

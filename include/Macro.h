@@ -103,7 +103,7 @@
 // NFLUX_FLUID : number of active components in patch->flux[]
 //               --> do not include passive components here, which is set by NFLUX_PASSIVE
 // NCOMP_MAG   : number of magnetic field components (for patch->magnetic[])
-// NCOMP_ELE   : number of electric field components on each cell face (for patch->electric[])
+// NCOMP_ELE   : numbe:?r of electric field components on each cell face (for patch->electric[])
 #if   ( MODEL == HYDRO )
 #  define NCOMP_FLUID         5
 #  define NFLUX_FLUID         NCOMP_FLUID
@@ -153,9 +153,9 @@
 #  define NCOMP_PASSIVE_BUILTIN1    0
 # endif
 
-// electron fraction (Ye)
+// entropy and electron fraction (Ye)
 # if ( EOS == EOS_NUCLEAR )
-#  define NCOMP_PASSIVE_BUILTIN2    1
+#  define NCOMP_PASSIVE_BUILTIN2    2
 # else
 #  define NCOMP_PASSIVE_BUILTIN2    0
 # endif
@@ -259,6 +259,8 @@
 # if ( EOS == EOS_NUCLEAR )
 #  define YE                  ( PASSIVE_NEXT_IDX2 )
 #  define PASSIVE_NEXT_IDX3   ( YE - 1            )
+#  define ENTR                ( PASSIVE_NEXT_IDX3 )
+#  define PASSIVE_NEXT_IDX4   ( ENTR - 1          )
 # else
 #  define PASSIVE_NEXT_IDX3   ( PASSIVE_NEXT_IDX2 )
 # endif
@@ -305,6 +307,8 @@
 # if ( EOS == EOS_NUCLEAR )
 #  define FLUX_YE          ( FLUX_NEXT_IDX2  )
 #  define FLUX_NEXT_IDX3   ( FLUX_YE - 1     )
+#  define FLUX_ENTR        ( FLUX_NEXT_IDX3  )
+#  define FLUX_NEXT_IDX4   ( FLUX_ENTR - 1   )
 # else
 #  define FLUX_NEXT_IDX3   ( FLUX_NEXT_IDX2  )
 # endif
@@ -334,6 +338,7 @@
 # endif
 
 # if ( EOS == EOS_NUCLEAR )
+#  define _ENTR               ( 1L << ENTR )
 #  define _YE                 ( 1L << YE   )
 # endif
 
@@ -369,6 +374,7 @@
 # endif
 
 # if ( EOS == EOS_NUCLEAR )
+#  define _FLUX_ENTR          ( 1L << FLUX_ENTR )
 #  define _FLUX_YE            ( 1L << FLUX_YE   )
 # endif
 
@@ -717,11 +723,14 @@
 #endif
 
 #if ( MODEL == HYDRO )
-#  define SRC_NAUX_DLEP          5     // SrcTerms.Dlep_AuxArray_Flt/Int[]
-#  define SRC_DLEP_PROF_NVAR     6     // SrcTerms.Dlep_Profile_DataDevPtr[]/RadiusDevPtr[]
-#  define SRC_DLEP_PROF_NBINMAX  4000
+#  define SRC_NAUX_DLEP          10    // SrcTerms.Dlep_AuxArray_Flt/Int[]
+#  define SRC_DLEP_PROF_NVAR      6    // SrcTerms.Dlep_Profile_DataDevPtr[]/RadiusDevPtr[]
+#  define SRC_DLEP_PROF_NBINMAX  4000  
+#  define SRC_NAUX_LIGB          10    // SrcTerms.LigB_AuxArray_Flt/Int[]
+
 #else
 #  define SRC_NAUX_DLEP          0
+#  define SRC_NAUX_LIGB          0
 #endif
 #  define SRC_NAUX_USER          10    // SrcTerms.User_AuxArray_Flt/Int[]
 

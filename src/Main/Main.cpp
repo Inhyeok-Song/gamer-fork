@@ -244,7 +244,7 @@ EoS_t EoS;
 
 // d. others
 #if ( EOS == EOS_NUCLEAR )
-char NUC_TABLE[MAX_STRING];
+char   NUC_TABLE[MAX_STRING];
 #endif
 #endif // HYDRO
 
@@ -261,11 +261,31 @@ SrcTerms_t SrcTerms;
 #if ( MODEL == HYDRO )
 double     Src_Dlep_AuxArray_Flt[SRC_NAUX_DLEP];
 int        Src_Dlep_AuxArray_Int[SRC_NAUX_DLEP];
+double     Src_LigB_AuxArray_Flt[SRC_NAUX_LIGB];
+int        Src_LigB_AuxArray_Int[SRC_NAUX_LIGB];
 #endif
 double     Src_User_AuxArray_Flt[SRC_NAUX_USER];
 int        Src_User_AuxArray_Int[SRC_NAUX_USER];
 
-// (2-11) user-defined derived fields
+#ifdef DELEPTONIZATION
+double DELEP_ENU;
+double DELEP_RHO1;
+double DELEP_RHO2;
+double DELEP_YE1;
+double DELEP_YE2;
+double DELEP_YEC;
+#endif
+
+#ifdef NEUTRINO_SCHEME
+#if ( NEUTRINO_SCHEME == LIGHTBULB )
+double LB_LNU;
+double LB_TNU;
+double LB_HEATFACTOR;
+#endif
+#endif
+
+
+// (2-12) user-defined derived fields
 bool OPT__OUTPUT_USER_FIELD;
 int  UserDerField_Num                  = -1;    // must be negative for Output_DumpData_Total_HDF5()
 char (*UserDerField_Label)[MAX_STRING] = NULL;
