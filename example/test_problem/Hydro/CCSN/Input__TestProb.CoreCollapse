@@ -5,7 +5,7 @@ CCSN_Prob        2                                 # target CCSN problem
                                                    #    2 : Core-Collapse test
 
 
-CCSN_Prof_File   IC/s20GREP_LS220_15ms_none        # filename of input profile
+CCSN_Prof_File   IC/s20_gamer                      # filename of input profile
 
 CCSN_Mag         1                                 # target magnetic field profile                     [1]
                                                    # ( 0: Ap = B0* varpi^2 * (1 - rho / rho_max)^np * (P / P_max)
