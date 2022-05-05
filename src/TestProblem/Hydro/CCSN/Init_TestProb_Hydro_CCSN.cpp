@@ -9,6 +9,7 @@ typedef int CCSN_t;
 const CCSN_t
    Migration_Test = 0
   ,Post_Bounce    = 1
+  ,Core_Collapse  = 2
   ;
 
 typedef int CCSN_Mag_t;
@@ -130,7 +131,7 @@ void SetParameter()
 // ********************************************************************************************************************************
 // ReadPara->Add( "KEY_IN_THE_FILE",   &VARIABLE,              DEFAULT,       MIN,              MAX               );
 // ********************************************************************************************************************************
-   ReadPara->Add( "CCSN_Prob",             &CCSN_Prob,             -1,            0,                1                 );
+   ReadPara->Add( "CCSN_Prob",             &CCSN_Prob,             -1,            0,                2                 );
    ReadPara->Add( "CCSN_Prof_File",         CCSN_Prof_File,        Useless_str,   Useless_str,      Useless_str       );
 #  ifdef MHD
    ReadPara->Add( "CCSN_Mag",              &CCSN_Mag,              1,             0,                1                 );
@@ -167,6 +168,14 @@ void SetParameter()
                             CCSN_ColIdx_R      =  0;  CCSN_ColIdx_Dens   =  1;  CCSN_ColIdx_Pres   =  5;  CCSN_ColIdx_Velr   =  3;
                             CCSN_ColIdx_Ye     =  2;  CCSN_ColIdx_Temp   =  4;  CCSN_ColIdx_Entr   =  6;
                             sprintf( CCSN_Name, "Post bounce test" );
+                            break;
+
+      case Core_Collapse  : CCSN_NCol = 6;
+                            CCSN_TargetCols[0] =  0;  CCSN_TargetCols[1] =  2;  CCSN_TargetCols[2] =  3;  CCSN_TargetCols[3] =  4;
+                            CCSN_TargetCols[4] =  5;  CCSN_TargetCols[5] =  7;
+                            CCSN_ColIdx_R      =  0;  CCSN_ColIdx_Dens   =  1;  CCSN_ColIdx_Pres   =  3;  CCSN_ColIdx_Velr   =  4;
+                            CCSN_ColIdx_Ye     =  5;  CCSN_ColIdx_Temp   =  2;  CCSN_ColIdx_Entr   = -1;
+                            sprintf( CCSN_Name, "Core Collapse test" );
                             break;
 
       default             : Aux_Error( ERROR_INFO, "unsupported CCSN problem (%d) !!\n", CCSN_Prob );
@@ -299,6 +308,15 @@ void SetGridIC( real fluid[], const double x, const double y, const double z, co
          Aux_Error( ERROR_INFO, "interpolation failed for temperature at radius %13.7e !!\n", r );
       if ( Entr == NULL_REAL )
          Aux_Error( ERROR_INFO, "interpolation failed for entropy at radius %13.7e !!\n", r );
+   }
+   else if ( CCSN_Prob == Core_Collapse )
+   {
+      Ye   = Mis_InterpolateFromTable( CCSN_Prof_NBin, Table_R, CCSN_Prof+CCSN_ColIdx_Ye  *CCSN_Prof_NBin, r );
+      Temp = Mis_InterpolateFromTable( CCSN_Prof_NBin, Table_R, CCSN_Prof+CCSN_ColIdx_Temp*CCSN_Prof_NBin, r );  // in Kelvin
+      if ( Ye   == NULL_REAL )
+         Aux_Error( ERROR_INFO, "interpolation failed for Ye at radius %13.7e !!\n", r );
+      if ( Temp == NULL_REAL )
+         Aux_Error( ERROR_INFO, "interpolation failed for temperature at radius %13.7e !!\n", r );
    }
 
 

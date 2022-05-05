@@ -179,6 +179,12 @@ void Init_Load_Parameter()
 
 // source terms
    ReadPara->Add( "SRC_DELEPTONIZATION",        &SrcTerms.Deleptonization,        false,           Useless_bool,  Useless_bool   );
+   ReadPara->Add( "DELEP_ENU",                  &SrcTerms.Dlep_Enu,               10.0,            0.0,           NoMax_double   );
+   ReadPara->Add( "DELEP_RHO1",                 &SrcTerms.Dlep_Rho1,              3.0e7,           0.0,           NoMax_double   );
+   ReadPara->Add( "DELEP_RHO2",                 &SrcTerms.Dlep_Rho2,              2.0e13,          0.0,           NoMax_double   );
+   ReadPara->Add( "DELEP_YE1",                  &SrcTerms.Dlep_Ye1,               0.5,             0.0,           NoMax_double   );
+   ReadPara->Add( "DELEP_YE2",                  &SrcTerms.Dlep_Ye2,               0.278,           0.0,           NoMax_double   );
+   ReadPara->Add( "DELEP_YEC",                  &SrcTerms.Dlep_Yec,               0.035,           0.0,           NoMax_double   );
    ReadPara->Add( "SRC_LIGHTBULB",              &SrcTerms.Lightbulb,              false,           Useless_bool,  Useless_bool   );
    ReadPara->Add( "SRC_LIGHTBULB_LNUE",         &SrcTerms.Lightbulb_Lnue,         1.0e52,          0.0,           NoMax_double   );
    ReadPara->Add( "SRC_LIGHTBULB_TNUE",         &SrcTerms.Lightbulb_Tnue,         4.0,             0.0,           NoMax_double   );

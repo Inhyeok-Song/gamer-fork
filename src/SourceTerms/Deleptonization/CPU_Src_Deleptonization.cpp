@@ -1,6 +1,16 @@
+#include "EoS.h"
+#include "NuclearEoS.h"
 #include "CUFLU.h"
 
-#if ( MODEL == HYDRO )
+#if ( MODEL == HYDRO  &&  EOS == EOS_NUCLEAR )
+
+#define SRC_AUX_DENS2CGS            0
+#define SRC_AUX_DELEP_ENU           1
+#define SRC_AUX_DELEP_RHO1          2
+#define SRC_AUX_DELEP_RHO2          3
+#define SRC_AUX_DELEP_YE1           4
+#define SRC_AUX_DELEP_YE2           5
+#define SRC_AUX_DELEP_YEC           6
 
 
 
@@ -28,7 +38,9 @@ void Src_PassData2GPU_Deleptonization();
 
 #endif
 
-
+GPU_DEVICE static
+real YeOfRhoFunc( const real DENS_CGS, const real DELEP_RHO1, const real DELEP_RHO2,
+                  const real DELEP_YE1, const real DELEP_YE2, const real DELEP_YEC );
 
 /********************************************************
 1. Deleptonization source term
@@ -61,7 +73,7 @@ void Src_PassData2GPU_Deleptonization();
 // Description :  Set the auxiliary arrays AuxArray_Flt/Int[]
 //
 // Note        :  1. Invoked by Src_Init_Deleptonization()
-//                2. AuxArray_Flt/Int[] have the size of SRC_NAUX_DLEP defined in Macro.h (default = 5)
+//                2. AuxArray_Flt/Int[] have the size of SRC_NAUX_DLEP defined in Macro.h (default = 7)
 //                3. Add "#ifndef __CUDACC__" since this routine is only useful on CPU
 //
 // Parameter   :  AuxArray_Flt/Int : Floating-point/Integer arrays to be filled up
@@ -72,7 +84,15 @@ void Src_PassData2GPU_Deleptonization();
 void Src_SetAuxArray_Deleptonization( double AuxArray_Flt[], int AuxArray_Int[] )
 {
 
-// TBF
+   AuxArray_Flt[SRC_AUX_DENS2CGS          ] = UNIT_D;
+   AuxArray_Flt[SRC_AUX_DELEP_ENU         ] = SrcTerms.Dlep_Enu;
+   AuxArray_Flt[SRC_AUX_DELEP_RHO1        ] = SrcTerms.Dlep_Rho1;
+   AuxArray_Flt[SRC_AUX_DELEP_RHO2        ] = SrcTerms.Dlep_Rho2;
+   AuxArray_Flt[SRC_AUX_DELEP_YE1         ] = SrcTerms.Dlep_Ye1;
+   AuxArray_Flt[SRC_AUX_DELEP_YE2         ] = SrcTerms.Dlep_Ye2;
+   AuxArray_Flt[SRC_AUX_DELEP_YEC         ] = SrcTerms.Dlep_Yec;
+
+
 
 } // FUNCTION : Src_SetAuxArray_Deleptonization
 #endif // #ifndef __CUDACC__
@@ -90,6 +110,7 @@ void Src_SetAuxArray_Deleptonization( double AuxArray_Flt[], int AuxArray_Int[] 
 // Note        :  1. Invoked by CPU/GPU_SrcSolver_IterateAllCells()
 //                2. See Src_SetAuxArray_Deleptonization() for the values stored in AuxArray_Flt/Int[]
 //                3. Shared by both CPU and GPU
+//                3. Ref: M. Liebendoerfer, 2005, ApJ, 603, 1042-1051 (arXiv: astro-ph/0504072)
 //
 // Parameter   :  fluid             : Fluid array storing both the input and updated values
 //                                    --> Including both active and passive variables
@@ -122,9 +143,140 @@ static void Src_Deleptonization( real fluid[], const real B[],
    if ( AuxArray_Int == NULL )   printf( "ERROR : AuxArray_Int == NULL in %s !!\n", __FUNCTION__ );
 #  endif
 
-// TBF
-// profiles are stored in SrcTerms->Dlep_Profile_DataDevPtr/Dlep_Profile_RadiusDevPtr/Dlep_Profile_NBin
-// --> see "include/SrcTerms.h"
+   const double Kelvin2MeV      = Const_kB_eV*1.0e-6;
+   const real Delep_minDens_CGS = 1.0e6; // [g/cm^3]
+
+   const real Dens2CGS     = AuxArray_Flt[SRC_AUX_DENS2CGS  ];
+   const real DELEP_ENU    = AuxArray_Flt[SRC_AUX_DELEP_ENU ];
+   const real DELEP_RHO1   = AuxArray_Flt[SRC_AUX_DELEP_RHO1];
+   const real DELEP_RHO2   = AuxArray_Flt[SRC_AUX_DELEP_RHO2];
+   const real DELEP_YE1    = AuxArray_Flt[SRC_AUX_DELEP_YE1 ];
+   const real DELEP_YE2    = AuxArray_Flt[SRC_AUX_DELEP_YE2 ];
+   const real DELEP_YEC    = AuxArray_Flt[SRC_AUX_DELEP_YEC ];
+
+#  ifdef MHD
+   const real Emag       = (real)0.5*(  SQR( B[MAGX] ) + SQR( B[MAGY] ) + SQR( B[MAGZ] )  );
+#  else
+   const real Emag       = NULL_REAL;
+#  endif
+
+
+// for entropy updates
+   real Del_Ye   = NULL_REAL;
+   real Del_Entr = NULL_REAL;
+
+// output Ye
+   real Yout = NULL_REAL;
+
+
+// Deleptonization
+   const real Dens_Code = fluid[DENS];
+   const real Dens_CGS  = Dens_Code * Dens2CGS;
+   const real Eint_Code = Hydro_Con2Eint( fluid[DENS], fluid[MOMX], fluid[MOMY], fluid[MOMZ], fluid[ENGY], true, MinEint, Emag );
+         real Entr      = NULL_REAL; // entropy in kb/baryon
+         real Ye        = fluid[YE] / fluid[DENS];
+
+   real Eint_Code_0 = Eint_Code;
+   real Entr_0      = Entr;
+   real Ye_0        = Ye;
+
+
+   if ( Dens_CGS <= Delep_minDens_CGS )
+   {
+      Del_Ye = 0.0;
+   } else
+   {
+      Yout = YeOfRhoFunc( Dens_CGS, DELEP_RHO1, DELEP_RHO2,
+                          DELEP_YE1, DELEP_YE2, DELEP_YEC );
+      Del_Ye = Yout - Ye;
+      Del_Ye = MIN( 0.0, Del_Ye ); // Deleptonization cannot increase Ye
+   }
+
+   if ( Del_Ye < 0.0 )
+   {
+//    Nuclear EoS
+#     if ( NUC_TABLE_MODE == NUC_TABLE_MODE_TEMP )
+      const int  NTarget1 = 2;
+#     else
+      const int  NTarget1 = 3;
+#     endif
+            int  In_Int1[NTarget1+1];
+            real In_Flt1[3], Out1[NTarget1+1];
+
+      In_Flt1[0] = Dens_Code;
+      In_Flt1[1] = Eint_Code;
+      In_Flt1[2] = Ye;
+
+      In_Int1[0] = NTarget1;
+      In_Int1[1] = NUC_VAR_IDX_ENTR;
+      In_Int1[2] = NUC_VAR_IDX_MUNU;
+#  if ( NUC_TABLE_MODE == NUC_TABLE_MODE_ENGY )
+      In_Int1[3] = NUC_VAR_IDX_EORT;
+#  endif
+
+
+      EoS->General_FuncPtr( NUC_MODE_ENGY, Out1, In_Flt1, In_Int1, EoS->AuxArrayDevPtr_Flt, EoS->AuxArrayDevPtr_Int, EoS->Table );
+
+                 Entr      = Out1[0];
+            real mu_nu_MeV = Out1[1];
+      const real Temp_MeV  = Out1[2] * Kelvin2MeV;
+
+      // mu_nu_MeV = mu_nu_MeV + Q;  // add chemical potential
+
+#  ifdef GAMER_DEBUG
+   if ( mu_nu_MeV != mu_nu_MeV ) printf( "ERROR : Couldn't get chemical potential munu (NaN) !!\n" );
+#  endif // GAMER_DEBUG
+
+      if ( ( mu_nu_MeV < DELEP_ENU ) || ( Dens_CGS >= 2.0e12 ) )
+      {
+         Del_Entr = 0.0;
+      } else
+      {
+         Del_Entr = - Del_Ye * ( mu_nu_MeV - DELEP_ENU ) / Temp_MeV;
+      }
+
+//    update entropy and Ye
+      Entr      = Entr + Del_Entr;
+      Ye        = Ye + Del_Ye;
+      fluid[YE] = Dens_Code * Ye;
+
+
+//    input and output arrays for Nuclear EoS
+#     if ( NUC_TABLE_MODE == NUC_TABLE_MODE_TEMP )
+      const int  NTarget2 = 1;
+#     else
+      const int  NTarget2 = 0;
+#     endif
+            int  In_Int2[NTarget2+1];
+            real In_Flt2[3], Out2[NTarget2+1];
+
+      In_Flt2[0]  = Dens_Code;
+      In_Flt2[1]  = Entr;
+      In_Flt2[2]  = Ye;
+
+      In_Int2[0]  = NTarget2;
+#     if ( NUC_TABLE_MODE == NUC_TABLE_MODE_TEMP )
+      In_Int2[1]  = NUC_VAR_IDX_EORT;
+#     endif
+
+//    call Nuclear EoS with entropy mode
+      EoS->General_FuncPtr( NUC_MODE_ENTR, Out2, In_Flt2, In_Int2, EoS->AuxArrayDevPtr_Flt, EoS->AuxArrayDevPtr_Int, EoS->Table );
+      const real Eint_Update = Out2[0];
+      fluid[ENGY] = Hydro_ConEint2Etot( fluid[DENS], fluid[MOMX], fluid[MOMY], fluid[MOMZ], Eint_Update, Emag );
+
+
+
+// final check
+#  if GAMER_DEBUG
+   if (  Hydro_CheckUnphysical( UNPHY_MODE_SING, &Eint_Update, "output internal energy density", ERROR_INFO, UNPHY_VERBOSE )  )
+   {
+      printf( "   Dens=%13.7e code units, Eint=%13.7e code units, Ye=%13.7e\n", Dens_Code, Eint_Code, Ye );
+   }
+#  endif // GAMER_DEBUG
+
+   } // if ( Del_Ye < 0.0 )
+
+
 
 } // FUNCTION : Src_Deleptonization
 
@@ -160,67 +312,7 @@ void Src_WorkBeforeMajorFunc_Deleptonization( const int lv, const double TimeNew
                                               double AuxArray_Flt[], int AuxArray_Int[] )
 {
 
-// TBF
-
-/*
-// compute profiles
-// --> here is just an example; see GREP for a more efficient implementation
-// --> SRC_DLEP_PROF_NVAR and SRC_DLEP_PROF_NBINMAX are defined in Macro.h (default = 6 and 4000, respectively)
-// --> be careful about the issue of center drifting
-   const double      Center[3]      = { amr->BoxCenter[0], amr->BoxCenter[1], amr->BoxCenter[2] };
-   const double      MaxRadius      = 0.5*amr->BoxSize[0];
-   const double      MinBinSize     = amr->dh[MAX_LEVEL];
-   const bool        LogBin         = true;
-   const double      LogBinRatio    = 1.25;
-   const bool        RemoveEmptyBin = true;
-   const long        TVar[]         = { _DENS, _MOMX, _ENGY, _PRES, _VELR, _EINT };
-   const int         NProf          = SRC_DLEP_PROF_NVAR;
-   const int         SingleLv       = -1;
-   const int         MaxLv          = -1;
-   const PatchType_t PatchType      = PATCH_LEAF;
-   const double      PrepTime       = TimeNew;
-
-   Profile_t *Prof[SRC_DLEP_PROF_NVAR];
-   for (int v=0; v<SRC_DLEP_PROF_NVAR; v++)  Prof[v] = new Profile_t();
-
-   Aux_ComputeProfile( Prof, Center, MaxRadius, MinBinSize, LogBin, LogBinRatio, RemoveEmptyBin,
-                       TVar, NProf, SingleLv, MaxLv, PatchType, PrepTime );
-
-
-// check and store the number of radial bins
-   if ( Prof[0]->NBin > SRC_DLEP_PROF_NBINMAX )
-      Aux_Error( ERROR_INFO, "Number of radial bins (%d) exceeds the maximum size (%d) !!\n",
-                 Prof[0]->NBin, SRC_DLEP_PROF_NBINMAX );
-
-   SrcTerms.Dlep_Profile_NBin = Prof[0]->NBin;
-
-
-// store profiles in the host arrays
-// --> note the typecasting from double to real
-   for (int v=0; v<SRC_DLEP_PROF_NVAR; v++)
-   for (int b=0; b<Prof[v]->NBin; b++)
-      h_SrcDlepProf_Data[v][b] = (real)Prof[v]->Data[b];
-
-   for (int b=0; b<Prof[0]->NBin; b++)
-      h_SrcDlepProf_Radius[b] = (real)Prof[0]->Radius[b];
-
-
-// pass profiles to GPU
-#  ifdef GPU
-   Src_PassData2GPU_Deleptonization();
-#  endif
-
-
-// uncomment the following lines if the auxiliary arrays have been modified
-//#  ifdef GPU
-//   Src_SetConstMemory_Deleptonization( AuxArray_Flt, AuxArray_Int,
-//                                       SrcTerms.Dlep_AuxArrayDevPtr_Flt, SrcTerms.Dlep_AuxArrayDevPtr_Int );
-//#  endif
-
-
-// free memory
-   for (int v=0; v<SRC_DLEP_PROF_NVAR; v++)  delete Prof[v];
-*/
+// not used by this source term
 
 } // FUNCTION : Src_WorkBeforeMajorFunc_Deleptonization
 #endif
@@ -381,12 +473,53 @@ void Src_Init_Deleptonization()
 void Src_End_Deleptonization()
 {
 
-// TBF
+// not used by this source term
 
 } // FUNCTION : Src_End_Deleptonization
+
+
 
 #endif // #ifndef __CUDACC__
 
 
 
-#endif // #if ( MODEL == HYDRO )
+//-----------------------------------------------------------------------------------------
+// Function    :  YeOfRhoFunc
+// Description :  Calculate electron fraction Ye from the density
+//
+// Note        :  1. Invoked by Src_Deleptonization()
+//                2. Add "#ifndef __CUDACC__" since this routine is only useful on CPU
+//                3. Ref: M. Liebendoerfer, 2005, ApJ, 603, 1042-1051 (arXiv: astro-ph/0504072)
+//
+// Parameter   :  DENS_CGS  : density in CGS from which Ye is caculated
+//             :  DELEP_RHO1: parameter for the parameterized deleptonization fitting formula
+//             :  DELEP_RHO2: parameter for the parameterized deleptonization fitting formula
+//             :  DELEP_YE1 : parameter for the parameterized deleptonization fitting formula
+//             :  DELEP_YE2 : parameter for the parameterized deleptonization fitting formula
+//             :  DELEP_YEC : parameter for the parameterized deleptonization fitting formula
+//
+// Return      :  YeOfRhoFunc
+//-----------------------------------------------------------------------------------------
+GPU_DEVICE static
+real YeOfRhoFunc( const real DENS_CGS, const real DELEP_RHO1, const real DELEP_RHO2,
+                  const real DELEP_YE1, const real DELEP_YE2, const real DELEP_YEC )
+{
+
+   real XofRho, Ye;
+
+   XofRho = (  2.0 * LOG10( DENS_CGS ) - LOG10( DELEP_RHO2 ) - LOG10( DELEP_RHO1 )  )
+          / (  LOG10( DELEP_RHO2 ) - LOG10( DELEP_RHO1 )  );
+   XofRho = MAX( -1.0, MIN( 1.0, XofRho ) );
+
+   Ye = 0.5 * ( DELEP_YE2 + DELEP_YE1 ) + 0.5 * XofRho * ( DELEP_YE2 - DELEP_YE1 )
+      + DELEP_YEC * (  1.0 - FABS( XofRho )
+      + 4.0 * FABS( XofRho ) * ( FABS( XofRho ) - 0.5 ) * ( FABS( XofRho ) - 1.0 )  );
+
+
+   return Ye;
+
+}
+
+
+
+#endif // #if ( MODEL == HYDRO  &&  EOS == EOS_NUCLEAR )

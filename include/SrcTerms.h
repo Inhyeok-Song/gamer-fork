@@ -73,6 +73,12 @@ struct SrcTerms_t
    real    (*Dlep_Profile_DataDevPtr)[SRC_DLEP_PROF_NBINMAX];
    real     *Dlep_Profile_RadiusDevPtr;
    int       Dlep_Profile_NBin;
+   double    Dlep_Enu;
+   double    Dlep_Rho1;
+   double    Dlep_Rho2;
+   double    Dlep_Ye1;
+   double    Dlep_Ye2;
+   double    Dlep_Yec;
 
 // lightbulb
    SrcFunc_t Lightbulb_FuncPtr;
