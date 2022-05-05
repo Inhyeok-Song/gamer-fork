@@ -1,5 +1,5 @@
 # problem-specific runtime parameters
-CCSN_Prob        1                                 # target CCSN problem
+CCSN_Prob        2                                 # target CCSN problem
                                                    #    0 : GREP migration test
                                                    #    1 : Post bounce test
                                                    #    2 : Core-Collapse test
