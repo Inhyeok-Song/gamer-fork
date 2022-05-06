@@ -110,7 +110,7 @@ void Record_CCSN_CentralQuant()
 
       for (int i=0; i<MPI_NRank; i++)
       {
-         if ( Data_Flt_All[i * NData_Flt] > Data_Flt[0] )
+         if ( Data_Flt_All[i * NData_Flt] >= Data_Flt[0] )
          {
             for (int b=0; b<NData_Int; b++)   Data_Int[b] = Data_Int_All[i * NData_Int + b];
             for (int b=0; b<NData_Flt; b++)   Data_Flt[b] = Data_Flt_All[i * NData_Flt + b];
