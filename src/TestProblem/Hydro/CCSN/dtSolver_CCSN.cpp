@@ -4,6 +4,9 @@
 
 extern double CCSN_LB_TimeFac;
 
+extern double CCSN_CentralDens;
+
+extern bool   CCSN_Is_PostBounce;
 
 
 //-------------------------------------------------------------------------------------------------------
@@ -157,3 +160,36 @@ double Mis_GetTimeStep_Lightbulb( const int lv, const double dTime_dt )
    return dt_LB;
 
 } // FUNCTION : Mis_GetTimeStep_Lightbulb
+
+
+
+//-------------------------------------------------------------------------------------------------------
+// Function    :  Mis_GetTimeStep_CoreCollapse
+// Description :  reduce the time step near core bounce to 1e-2 ms
+//
+// Note        :  1. This function should be applied to both physical and comoving coordinates and always
+//                   return the evolution time-step (dt) actually used in various solvers
+//                   --> Physical coordinates : dt = physical time interval
+//                       Comoving coordinates : dt = delta(scale_factor) / ( Hubble_parameter*scale_factor^3 )
+//                   --> We convert dt back to the physical time interval, which equals "delta(scale_factor)"
+//                       in the comoving coordinates, in Mis_GetTimeStep()
+//                2. Invoked by Mis_GetTimeStep() using the function pointer "Mis_GetTimeStep_User_Ptr",
+//                   which must be set by a test problem initializer
+//                3. Enabled by the runtime option "OPT__DT_USER"
+//
+// Parameter   :  lv       : Target refinement level
+//                dTime_dt : dTime/dt (== 1.0 if COMOVING is off)
+//
+// Return      :  dt
+//-------------------------------------------------------------------------------------------------------
+double Mis_GetTimeStep_CoreCollapse( const int lv, const double dTime_dt )
+{
+
+   double dt_CC = HUGE_NUMBER;
+
+   if ( !CCSN_Is_PostBounce && lv==0 && CCSN_CentralDens>1e13 )   dt_CC = 1e-5/UNIT_T;
+
+
+   return dt_CC;
+
+} // FUNCTION : Mis_GetTimeStep_CoreCollapse

@@ -59,7 +59,9 @@ void   Record_CCSN_CentralQuant();
 void   Record_CCSN_GWSignal();
 void   Detect_CoreBounce();
 double Mis_GetTimeStep_Lightbulb( const int lv, const double dTime_dt );
+double Mis_GetTimeStep_CoreCollapse( const int lv, const double dTime_dt );
 bool   Flag_Lightbulb( const int i, const int j, const int k, const int lv, const int PID, const double *Threshold );
+bool   Flag_CoreCollapse( const int i, const int j, const int k, const int lv, const int PID, const double *Threshold );
 
 
 
@@ -199,6 +201,8 @@ void SetParameter()
    if (  ( CCSN_Is_PostBounce == 0 )  &&  ( CCSN_Prob == Post_Bounce )  )
       Aux_Error( ERROR_INFO, "Incorrect parameter %s = %d !!\n", "CCSN_Is_PostBounce", CCSN_Is_PostBounce );
 
+   if (  ( CCSN_Is_PostBounce == 1 )  &&  ( CCSN_Prob == Core_Collapse )  )
+      Aux_Error( ERROR_INFO, "Incorrect parameter %s = %d !!\n", "CCSN_Is_PostBounce", CCSN_Is_PostBounce );
 
 // (2) set the problem-specific derived parameters
 
@@ -649,6 +653,13 @@ double Mis_GetTimeStep_CCSN( const int lv, const double dTime_dt )
 
       dt_CCSN = fmin( dt_CCSN, dt_LB );
    }
+   else if (  ( CCSN_Prob == Core_Collapse && !CCSN_Is_PostBounce )  )
+   {
+      const double dt_CC = Mis_GetTimeStep_CoreCollapse( lv, dTime_dt );
+
+      dt_CCSN = fmin( dt_CCSN, dt_CC );
+   }
+
 
 
    return dt_CCSN;
@@ -684,6 +695,11 @@ bool Flag_CCSN( const int i, const int j, const int k, const int lv, const int P
    if (  ( CCSN_Prob == Post_Bounce )  ||  SrcTerms.Lightbulb  )
    {
       Flag |= Flag_Lightbulb( i, j, k, lv, PID, Threshold );
+      if ( Flag )    return Flag;
+   }
+   else if (  ( CCSN_Prob == Core_Collapse )  )
+   {
+      Flag |= Flag_CoreCollapse( i, j, k, lv, PID, Threshold );
       if ( Flag )    return Flag;
    }
 
