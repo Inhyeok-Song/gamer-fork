@@ -870,6 +870,13 @@ void Aux_TakeNote()
       fprintf( Note, "SRC_ANY                         %d\n",      SrcTerms.Any              );
       fprintf( Note, "SRC_DELEPTONIZATION             %d\n",      SrcTerms.Deleptonization  );
       fprintf( Note, "SRC_LIGHTBULB                   %d\n",      SrcTerms.Lightbulb        );
+      if ( SrcTerms.Deleptonization ) {
+      fprintf( Note, "SRC_DELEP_ENU              %13.7e\n",       SrcTerms.Dlep_Enu         );
+      fprintf( Note, "SRC_DELEP_RHO1             %13.7e\n",       SrcTerms.Dlep_Rho1        ); 
+      fprintf( Note, "SRC_DELEP_RHO2             %13.7e\n",       SrcTerms.Dlep_Rho2        );
+      fprintf( Note, "SRC_DELEP_YE1              %13.7e\n",       SrcTerms.Dlep_Ye1         ); 
+      fprintf( Note, "SRC_DELEP_YE2              %13.7e\n",       SrcTerms.Dlep_Ye2         ); 
+      fprintf( Note, "SRC_DELEP_YEC              %13.7e\n",       SrcTerms.Dlep_Yec         ); }
       if ( SrcTerms.Lightbulb ) {
       fprintf( Note, "SRC_LIGHTBULB_LNUE              %13.7e\n",  SrcTerms.Lightbulb_Lnue   );
       fprintf( Note, "SRC_LIGHTBULB_TNUE              %13.7e\n",  SrcTerms.Lightbulb_Tnue   ); }
