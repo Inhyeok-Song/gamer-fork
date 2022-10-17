@@ -19,3 +19,7 @@ CCSN_GW_DT       1.0                               # output interval of GW signa
 CCSN_Eint_Mode   2                                 # Mode of obtaining internal energy in SetGridIC()  [2]
                                                    # ( 1=Temp Mode: Eint(dens, temp, [Ye])
                                                    #   2=Pres Mode: Eint(dens, pres, [Ye]) )
+
+CCSN_Rot_Mode      0                               # add initial angular momentum (0=off, 1=formula, 2=table) [0]
+CCSN_Rot_R_0       2.0e8                           # rotational parameter R_0 (in cm)        in the formulated rotatinal profile ( Omega(r)=Omega_0*[R_0^2/(r^2+R_0^2)] )  [2.0e8]
+CCSN_Rot_Omega_0   0.5                             # rotational parameter Omega_0 (in rad/s) in the formulated rotatinal profile ( Omega(r)=Omega_0*[R_0^2/(r^2+R_0^2)] )  [0.5]

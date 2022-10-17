@@ -23,4 +23,8 @@ CCSN_Eint_Mode   1                                 # Mode of obtaining internal 
 CCSN_MaxRefine_RadFac  0.15                        # factor that determines the maximum refinement level based on distance from the box center  [0.15]
 CCSN_LB_TimeFac        0.10                        # factor that scales the dt constrained by lightbulb scheme  [0.1]
 
-CCSN_Is_PostBounce     1                           # boolean that indicates whether core bounce has occurred   [0]
+CCSN_Rot_Mode          0                           # add initial angular momentum (0=off, 1=formula, 2=table) [0]
+CCSN_Rot_R_0           2.0e8                       # rotational parameter R_0 (in cm) in the rotatinal profile ( Omega(r)=Omega_0*[R_0^2/(r^2+R_0^2)] )  [2.0e8]
+CCSN_Rot_Omega_0       0.5                         # rotational parameter Omega_0 (in rad/s) in the rotatinal profile ( Omega(r)=Omega_0*[R_0^2/(r^2+R_0^2)] )  [0.5]
+
+CCSN_Is_PostBounce     1                           # boolean that indicates whether core bounce has occurred  [0]
