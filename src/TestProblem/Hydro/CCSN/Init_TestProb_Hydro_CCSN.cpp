@@ -57,9 +57,6 @@ static int        CCSN_Eint_Mode;                  // Mode of obtaining internal
        double     CCSN_CC_Red_DT;                  // reduced time step (in s) when the central density exceeds CCSN_CC_CentralDensFac before bounce
        double     CCSN_MaxRefine_RadFac;           // factor that determines the maximum refinement level based on distance from the box center
        double     CCSN_LB_TimeFac;                 // factor that scales the dt constrained by lightbulb scheme
-       int        CCSN_Rot_Mode;                   // mode for adding initial angular momentum (0=off, 1=formula, 2=table)
-       double     CCSN_Rot_R_0;                    // rotational parameter R_0     in the rotatinal profile ( Omega(r)=Omega_0*[R_0^2/(r^2+R_0^2)] )
-       double     CCSN_Rot_Omega_0;                // rotational parameter Omega_0 in the rotatinal profile ( Omega(r)=Omega_0*[R_0^2/(r^2+R_0^2)] )
 
        bool       CCSN_Is_PostBounce = false;      // boolean that indicates whether core bounce has occurred
 // =======================================================================================
@@ -166,9 +163,6 @@ void SetParameter()
    ReadPara->Add( "CCSN_MaxRefine_RadFac",   &CCSN_MaxRefine_RadFac,   0.15,          0.0,              NoMax_double      );
    ReadPara->Add( "CCSN_LB_TimeFac",         &CCSN_LB_TimeFac,         0.1,           Eps_double,       1.0               );
    ReadPara->Add( "CCSN_Is_PostBounce",      &CCSN_Is_PostBounce,      false,         Useless_bool,     Useless_bool      );
-   ReadPara->Add( "CCSN_Rot_Mode",           &CCSN_Rot_Mode,           0,             0,                2                 );
-   ReadPara->Add( "CCSN_Rot_R_0",            &CCSN_Rot_R_0,            2.0e8,         0.0,              NoMax_double      );
-   ReadPara->Add( "CCSN_Rot_Omega_0",        &CCSN_Rot_Omega_0,        0.5,           0.0,              NoMax_double      );
 
    ReadPara->Read( FileName );
 
@@ -308,11 +302,6 @@ void SetParameter()
       Aux_Message( stdout, "  central density threshold for CCSN_CC_MaxRefine_LV2 = %13.7e\n", CCSN_CC_MaxRefine_Dens2  ); }
       Aux_Message( stdout, "  central density factor for reducing dt              = %13.7e\n", CCSN_CC_CentralDensFac   );
       Aux_Message( stdout, "  reduced dt near bounce                              = %13.7e\n", CCSN_CC_Red_DT           );   }
-      if ( CCSN_Rot_Mode ) {
-      Aux_Message( stdout, "  mode for adding initial angular momentum            = %d\n",     CCSN_Rot_Mode            );
-      if ( CCSN_Rot_Mode == 1 ) {
-      Aux_Message( stdout, "  rotational parameter R_0                            = %13.7e\n", CCSN_Rot_R_0             );
-      Aux_Message( stdout, "  rotational parameter Omega_0                        = %13.7e\n", CCSN_Rot_Omega_0         ); } }
       Aux_Message( stdout, "=======================================================================================\n"  );
    }
 
@@ -398,41 +387,6 @@ void SetGridIC( real fluid[], const double x, const double y, const double z, co
    Momx = Dens*Velr*x0/r;
    Momy = Dens*Velr*y0/r;
    Momz = Dens*Velr*z0/r;
-// add angular momentum if any
-   switch  ( CCSN_Rot_Mode )
-   {
-      case 0 : break;
-//    rotational profile from the formula ( Omega(r)=Omega_0*[R_0^2/(r^2+R_0^2)] )
-      case 1 :
-      {
-         const double R_0     = CCSN_Rot_R_0 / UNIT_L;
-         const double Omega_0 = CCSN_Rot_Omega_0 * UNIT_T;
-         const double Omega_r = Omega_0 * SQR(R_0) / ( SQR(r) + SQR(R_0) );
-         const double r_xy    = sqrt( SQR(x0) + SQR(y0) );
-         const double Vel_phi = r_xy * Omega_r;
-         const double Cos_phi = x0/r_xy;
-         const double Sin_phi = y0/r_xy;
-
-         Momx -= Dens * ( Vel_phi * Sin_phi );
-         Momy += Dens * ( Vel_phi * Cos_phi );
-
-         if ( Omega_r / UNIT_T > 1.9 ) {
-            // printf( "R_0: %13.4e\n", R_0 );
-            // printf( "Omega_0: %13.4e\n", Omega_0 );
-            // printf( "Omega_r: %13.4e, Vel_r: %13.4e, Vel_phi: %13.4e\n ", Omega_r / UNIT_T, Velr, Vel_phi );
-            printf( "Momx0: %13.4e,  Momx1: %13.4e\n", Dens*Velr*x0/r, Momx );
-            printf( "Momy0: %13.4e,  Momy1: %13.4e\n", Dens*Velr*y0/r, Momy );
-         }
-
-      }
-      break;
-//    rotational profile from a table
-      case 2 :
-      {
-         Aux_Error( ERROR_INFO, "tabular rotational profile not supported yet\n" );
-      }
-      break;
-   }
 
 // calculate the internal energy
 #  if ( EOS == EOS_NUCLEAR )
@@ -645,6 +599,50 @@ void SetBFieldIC_Suwa2007( real magnetic[], const double x, const double y, cons
 
 } // FUNCTION : SetBFieldIC_Suwa2007
 #endif // #ifdef MHD
+
+
+
+#if ( EOS == EOS_NUCLEAR  &&  NUC_TABLE_MODE == NUC_TABLE_MODE_TEMP )
+//-------------------------------------------------------------------------------------------------------
+// Function    :  Flu_ResetByUser_CCSN
+// Description :  Function to reset the temperature initial guess
+//
+// Note        :  1. Invoked by "Flu_ResetByUser_API()" and "Model_Init_ByFunction_AssignData()" using the
+//                   function pointer "Flu_ResetByUser_Func_Ptr"
+//                2. This function will be invoked when constructing the initial condition
+//                    (by calling "Model_Init_ByFunction_AssignData()") and after each update
+//                    (by calling "Flu_ResetByUser_API()")
+//                3. Input "fluid" array stores the original values
+//                4. Even when DUAL_ENERGY is adopted, one does NOT need to set the dual-energy variable here
+//                   --> It will be set automatically in "Flu_ResetByUser_API()" and "Model_Init_ByFunction_AssignData()"
+//                5. Enabled by the runtime option "OPT__RESET_FLUID"
+//
+// Parameter   :  fluid    : Fluid array storing both the input (origial) and reset values
+//                           --> Including both active and passive variables
+//                Emag     : Magnetic energy (MHD only)
+//                x/y/z    : Target physical coordinates
+//                Time     : Target physical time
+//                dt       : Time interval to advance solution
+//                lv       : Target refinement level
+//                AuxArray : Auxiliary array
+//
+// Return      :  true  : This cell has been reset
+//                false : This cell has not been reset
+//-------------------------------------------------------------------------------------------------------
+bool Flu_ResetByUser_CCSN( real fluid[], const double Emag, const double x, const double y, const double z, const double Time,
+                           const double dt, const int lv, double AuxArray[] )
+{
+
+      const bool CheckMinTemp_No = false;
+      fluid[TEMP_IG] = Hydro_Con2Temp( fluid[DENS], fluid[MOMX], fluid[MOMY], fluid[MOMZ], fluid[ENGY],
+                                       fluid+NCOMP_FLUID, CheckMinTemp_No, NULL_REAL, Emag,
+                                       EoS_DensEint2Temp_CPUPtr, EoS_AuxArray_Flt, EoS_AuxArray_Int, h_EoS_Table );
+
+      return true;
+
+
+} // FUNCTION : Flu_ResetByUser_CCSN
+#endif // #if ( EOS == EOS_NUCLEAR  &&  NUC_TABLE_MODE == NUC_TABLE_MODE_TEMP )
 #endif // #if ( MODEL == HYDRO )
 
 
@@ -870,6 +868,9 @@ void Init_TestProb_Hydro_CCSN()
    Aux_Record_User_Ptr      = Record_CCSN;
    End_User_Ptr             = End_CCSN;
    Mis_GetTimeStep_User_Ptr = Mis_GetTimeStep_CCSN;
+#  if ( EOS == EOS_NUCLEAR  &&  NUC_TABLE_MODE == NUC_TABLE_MODE_TEMP )
+   Flu_ResetByUser_Func_Ptr = Flu_ResetByUser_CCSN;
+#  endif
 
 #  ifdef MHD
    switch ( CCSN_Mag )
