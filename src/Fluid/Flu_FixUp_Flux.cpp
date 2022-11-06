@@ -290,7 +290,7 @@ void Flu_FixUp_Flux( const int lv )
                   CorrVal[TEMP_IG] = Hydro_Con2Temp( CorrVal[DENS],
                                                      CorrVal[MOMX], CorrVal[MOMY], CorrVal[MOMZ],
                                                      CorrVal[ENGY], CorrVal+NCOMP_FLUID,
-                                                     CheckMinTemp_No, 0.0, Emag, EoS_DensEint2Temp_CPUPtr,
+                                                     CheckMinTemp_No, NULL_REAL, Emag, EoS_DensEint2Temp_CPUPtr,
                                                      EoS_AuxArray_Flt, EoS_AuxArray_Int, h_EoS_Table );
 #                 endif
 

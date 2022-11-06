@@ -428,7 +428,7 @@ void SetGridIC( real fluid[], const double x, const double y, const double z, co
    fluid[ENGY   ] = Hydro_ConEint2Etot( fluid[DENS], fluid[MOMX], fluid[MOMY], fluid[MOMZ], Eint, 0.0 );
 #  ifdef TEMP_IG
    fluid[TEMP_IG] = NULL_REAL;
-   fluid[TEMP_IG] = EoS_DensEint2Temp_CPUPtr( fluid[DENS], fluid[ENGY], fluid+NCOMP_FLUID,
+   fluid[TEMP_IG] = EoS_DensEint2Temp_CPUPtr( fluid[DENS], Eint, fluid+NCOMP_FLUID,
                                               EoS_AuxArray_Flt, EoS_AuxArray_Int, h_EoS_Table );
 #  endif
 
@@ -492,6 +492,50 @@ void SetBFieldIC( real magnetic[], const double x, const double y, const double 
 
 } // FUNCTION : SetBFieldIC
 #endif // #ifdef MHD
+
+
+
+#if ( EOS == EOS_NUCLEAR  &&  NUC_TABLE_MODE == NUC_TABLE_MODE_TEMP )
+//-------------------------------------------------------------------------------------------------------
+// Function    :  Flu_ResetByUser_Riemann
+// Description :  Function to reset the temperature initial guess
+//
+// Note        :  1. Invoked by "Flu_ResetByUser_API()" and "Model_Init_ByFunction_AssignData()" using the
+//                   function pointer "Flu_ResetByUser_Func_Ptr"
+//                2. This function will be invoked when constructing the initial condition
+//                    (by calling "Model_Init_ByFunction_AssignData()") and after each update
+//                    (by calling "Flu_ResetByUser_API()")
+//                3. Input "fluid" array stores the original values
+//                4. Even when DUAL_ENERGY is adopted, one does NOT need to set the dual-energy variable here
+//                   --> It will be set automatically in "Flu_ResetByUser_API()" and "Model_Init_ByFunction_AssignData()"
+//                5. Enabled by the runtime option "OPT__RESET_FLUID"
+//
+// Parameter   :  fluid    : Fluid array storing both the input (origial) and reset values
+//                           --> Including both active and passive variables
+//                Emag     : Magnetic energy (MHD only)
+//                x/y/z    : Target physical coordinates
+//                Time     : Target physical time
+//                dt       : Time interval to advance solution
+//                lv       : Target refinement level
+//                AuxArray : Auxiliary array
+//
+// Return      :  true  : This cell has been reset
+//                false : This cell has not been reset
+//-------------------------------------------------------------------------------------------------------
+bool Flu_ResetByUser_Riemann( real fluid[], const double Emag, const double x, const double y, const double z, const double Time,
+                              const double dt, const int lv, double AuxArray[] )
+{
+
+      const bool CheckMinTemp_No = false;
+      fluid[TEMP_IG] = Hydro_Con2Temp( fluid[DENS], fluid[MOMX], fluid[MOMY], fluid[MOMZ], fluid[ENGY],
+                                       fluid+NCOMP_FLUID, CheckMinTemp_No, NULL_REAL, Emag,
+                                       EoS_DensEint2Temp_CPUPtr, EoS_AuxArray_Flt, EoS_AuxArray_Int, h_EoS_Table );
+
+      return true;
+
+
+} // FUNCTION : Flu_ResetByUser_Riemann
+#endif // #if ( EOS == EOS_NUCLEAR  &&  NUC_TABLE_MODE == NUC_TABLE_MODE_TEMP )
 #endif // #if ( MODEL == HYDRO )
 
 
@@ -525,6 +569,9 @@ void Init_TestProb_Hydro_Riemann()
    Init_Function_User_Ptr        = SetGridIC;
 #  ifdef MHD
    Init_Function_BField_User_Ptr = SetBFieldIC;
+#  endif
+#  if ( EOS == EOS_NUCLEAR  &&  NUC_TABLE_MODE == NUC_TABLE_MODE_TEMP )
+   Flu_ResetByUser_Func_Ptr = Flu_ResetByUser_Riemann;
 #  endif
 #  endif // #if ( MODEL == HYDRO )
 

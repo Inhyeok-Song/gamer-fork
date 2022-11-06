@@ -193,6 +193,15 @@ void Aux_TakeNote()
 #     else
       fprintf( Note, "NUC_TABLE_MODE                  UNKNOWN\n" );
 #     endif
+#     if   ( NUC_EOS_SOLVER == NUC_EOS_SOLVER_ORIG )
+      fprintf( Note, "NUC_EOS_SOLVER                  NUC_EOS_SOLVER_ORIG\n" );
+#     elif ( NUC_EOS_SOLVER == NUC_EOS_SOLVER_LUT )
+      fprintf( Note, "NUC_EOS_SOLVER                  NUC_EOS_SOLVER_LUT\n" );
+#     elif ( NUC_EOS_SOLVER == NUC_EOS_SOLVER_DIRECT )
+      fprintf( Note, "NUC_EOS_SOLVER                  NUC_EOS_SOLVER_DIRECT\n" );
+#     else
+      fprintf( Note, "NUC_EOS_SOLVER                  UNKNOWN\n" );
+#     endif
 #     elif ( EOS == EOS_TABULAR )
       fprintf( Note, "EOS                             EOS_TABULAR\n" );
 #     elif ( EOS == EOS_USER )
@@ -427,6 +436,12 @@ void Aux_TakeNote()
 #     endif
 #     endif
 
+#     ifdef INTERP_MASK
+      fprintf( Note, "INTERP_MASK                     ON\n" );
+#     else
+      fprintf( Note, "INTERP_MASK                     OFF\n" );
+#     endif
+
 #     if   ( MODEL == HYDRO )
 #     ifdef CHECK_UNPHYSICAL_IN_FLUID
       fprintf( Note, "CHECK_UNPHYSICAL_IN_FLUID       ON\n" );
@@ -458,6 +473,20 @@ void Aux_TakeNote()
       fprintf( Note, "CHECK_INTERMEDIATE              OFF\n" );
 #     else
       fprintf( Note, "CHECK_INTERMEDIATE              UNKNOWN\n" );
+#     endif
+
+#     if   ( RSOLVER_RESCUE == EXACT )
+      fprintf( Note, "RSOLVER_RESCUE                  EXACT\n" );
+#     elif ( RSOLVER_RESCUE == HLLE )
+      fprintf( Note, "RSOLVER_RESCUE                  HLLE\n" );
+#     elif ( RSOLVER_RESCUE == HLLC )
+      fprintf( Note, "RSOLVER_RESCUE                  HLLC\n" );
+#     elif ( RSOLVER_RESCUE == HLLD )
+      fprintf( Note, "RSOLVER_RESCUE                  HLLD\n" );
+#     elif ( RSOLVER_RESCUE == NONE )
+      fprintf( Note, "RSOLVER_RESCUE                  OFF\n" );
+#     else
+      fprintf( Note, "RSOLVER_RESCUE                  UNKNOWN\n" );
 #     endif
 
 #     ifdef HLL_NO_REF_STATE
@@ -784,31 +813,37 @@ void Aux_TakeNote()
 //    record the parameters of time-step determination
       fprintf( Note, "Parameters of Time-step Determination\n" );
       fprintf( Note, "***********************************************************************************\n" );
-      fprintf( Note, "DT__MAX                        %14.7e\n",   DT__MAX                   );
-      fprintf( Note, "DT__FLUID                       %13.7e\n",  DT__FLUID                 );
-      fprintf( Note, "DT__FLUID_INIT                  %13.7e\n",  DT__FLUID_INIT            );
+      fprintf( Note, "DT__MAX                        %14.7e\n",   DT__MAX                     );
+      fprintf( Note, "DT__FLUID                       %13.7e\n",  DT__FLUID                   );
+      fprintf( Note, "DT__FLUID_INIT                  %13.7e\n",  DT__FLUID_INIT              );
 #     ifdef GRAVITY
-      fprintf( Note, "DT__GRAVITY                     %13.7e\n",  DT__GRAVITY               );
+      fprintf( Note, "DT__GRAVITY                     %13.7e\n",  DT__GRAVITY                 );
 #     endif
 #     if ( MODEL == ELBDM )
-      fprintf( Note, "DT__PHASE                       %13.7e\n",  DT__PHASE                 );
+      fprintf( Note, "DT__PHASE                       %13.7e\n",  DT__PHASE                   );
 #     endif
 #     ifdef PARTICLE
-      fprintf( Note, "DT__PARVEL                      %13.7e\n",  DT__PARVEL                );
-      fprintf( Note, "DT__PARVEL_MAX                 %14.7e\n",   DT__PARVEL_MAX            );
-      fprintf( Note, "DT__PARACC                      %13.7e\n",  DT__PARACC                );
+      fprintf( Note, "DT__PARVEL                      %13.7e\n",  DT__PARVEL                  );
+      fprintf( Note, "DT__PARVEL_MAX                 %14.7e\n",   DT__PARVEL_MAX              );
+      fprintf( Note, "DT__PARACC                      %13.7e\n",  DT__PARACC                  );
 #     endif
 #     ifdef COMOVING
-      fprintf( Note, "DT__MAX_DELTA_A                 %13.7e\n",  DT__MAX_DELTA_A           );
+      fprintf( Note, "DT__MAX_DELTA_A                 %13.7e\n",  DT__MAX_DELTA_A             );
 #     endif
-      fprintf( Note, "DT__SYNC_PARENT_LV              %13.7e\n",  DT__SYNC_PARENT_LV        );
-      fprintf( Note, "DT__SYNC_CHILDREN_LV            %13.7e\n",  DT__SYNC_CHILDREN_LV      );
-      fprintf( Note, "OPT__DT_USER                    %d\n",      OPT__DT_USER              );
-      fprintf( Note, "OPT__DT_LEVEL                   %d\n",      OPT__DT_LEVEL             );
-      fprintf( Note, "AUTO_REDUCE_DT                  %d\n",      AUTO_REDUCE_DT            );
-      fprintf( Note, "AUTO_REDUCE_DT_FACTOR           %13.7e\n",  AUTO_REDUCE_DT_FACTOR     );
-      fprintf( Note, "AUTO_REDUCE_DT_FACTOR_MIN       %13.7e\n",  AUTO_REDUCE_DT_FACTOR_MIN );
-      fprintf( Note, "OPT__RECORD_DT                  %d\n",      OPT__RECORD_DT            );
+      fprintf( Note, "DT__SYNC_PARENT_LV              %13.7e\n",  DT__SYNC_PARENT_LV          );
+      fprintf( Note, "DT__SYNC_CHILDREN_LV            %13.7e\n",  DT__SYNC_CHILDREN_LV        );
+      fprintf( Note, "OPT__DT_USER                    %d\n",      OPT__DT_USER                );
+      fprintf( Note, "OPT__DT_LEVEL                   %d\n",      OPT__DT_LEVEL               );
+      fprintf( Note, "AUTO_REDUCE_DT                  %d\n",      AUTO_REDUCE_DT              );
+      fprintf( Note, "AUTO_REDUCE_DT_FACTOR           %13.7e\n",  AUTO_REDUCE_DT_FACTOR       );
+      fprintf( Note, "AUTO_REDUCE_DT_FACTOR_MIN       %13.7e\n",  AUTO_REDUCE_DT_FACTOR_MIN   );
+#     if ( MODEL == HYDRO )
+      fprintf( Note, "AUTO_REDUCE_MINMOD_FACTOR       %13.7e\n",  AUTO_REDUCE_MINMOD_FACTOR   );
+      fprintf( Note, "AUTO_REDUCE_MINMOD_MIN          %13.7e\n",  AUTO_REDUCE_MINMOD_MIN      );
+#     endif
+      fprintf( Note, "AUTO_REDUCE_INT_MONO_FACTOR     %13.7e\n",  AUTO_REDUCE_INT_MONO_FACTOR );
+      fprintf( Note, "AUTO_REDUCE_INT_MONO_MIN        %13.7e\n",  AUTO_REDUCE_INT_MONO_MIN    );
+      fprintf( Note, "OPT__RECORD_DT                  %d\n",      OPT__RECORD_DT              );
       fprintf( Note, "***********************************************************************************\n" );
       fprintf( Note, "\n\n");
 
@@ -895,10 +930,10 @@ void Aux_TakeNote()
       fprintf( Note, "SRC_LIGHTBULB                   %d\n",      SrcTerms.Lightbulb        );
       if ( SrcTerms.Deleptonization ) {
       fprintf( Note, "SRC_DELEP_ENU                   %13.7e\n",  SrcTerms.Dlep_Enu         );
-      fprintf( Note, "SRC_DELEP_RHO1                  %13.7e\n",  SrcTerms.Dlep_Rho1        ); 
+      fprintf( Note, "SRC_DELEP_RHO1                  %13.7e\n",  SrcTerms.Dlep_Rho1        );
       fprintf( Note, "SRC_DELEP_RHO2                  %13.7e\n",  SrcTerms.Dlep_Rho2        );
-      fprintf( Note, "SRC_DELEP_YE1                   %13.7e\n",  SrcTerms.Dlep_Ye1         ); 
-      fprintf( Note, "SRC_DELEP_YE2                   %13.7e\n",  SrcTerms.Dlep_Ye2         ); 
+      fprintf( Note, "SRC_DELEP_YE1                   %13.7e\n",  SrcTerms.Dlep_Ye1         );
+      fprintf( Note, "SRC_DELEP_YE2                   %13.7e\n",  SrcTerms.Dlep_Ye2         );
       fprintf( Note, "SRC_DELEP_YEC                   %13.7e\n",  SrcTerms.Dlep_Yec         ); }
       if ( SrcTerms.Lightbulb ) {
       fprintf( Note, "SRC_LIGHTBULB_LNUE              %13.7e\n",  SrcTerms.Lightbulb_Lnue   );
@@ -1280,6 +1315,9 @@ void Aux_TakeNote()
                                                                                                              "UNKNOWN" );
 #     endif
       fprintf( Note, "INT_MONO_COEFF                  %13.7e\n",  INT_MONO_COEFF          );
+#     ifdef MHD
+      fprintf( Note, "INT_MONO_COEFF_B                %13.7e\n",  INT_MONO_COEFF_B        );
+#     endif
       fprintf( Note, "MONO_MAX_ITER                   %d\n",      MONO_MAX_ITER           );
       fprintf( Note, "INT_OPP_SIGN_0TH_ORDER          %d\n",      INT_OPP_SIGN_0TH_ORDER  );
       fprintf( Note, "***********************************************************************************\n" );
@@ -1396,6 +1434,7 @@ void Aux_TakeNote()
       fprintf( Note, "OPT__CK_INTERFACE_B             %d\n",      OPT__CK_INTERFACE_B       );
       fprintf( Note, "OPT__CK_DIVERGENCE_B            %d\n",      OPT__CK_DIVERGENCE_B      );
 #     endif
+      fprintf( Note, "OPT__CK_INPUT_FLUID             %d\n",      OPT__CK_INPUT_FLUID       );
       fprintf( Note, "***********************************************************************************\n" );
       fprintf( Note, "\n\n");
 

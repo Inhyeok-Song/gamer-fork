@@ -25,12 +25,15 @@ Default setup:
    --> MAX_LEVEL = 8
    --> OPT__DT_USER = 1
    --> OPT__FLAG_USER = 1
+   --> OPT__RESET_FLUID = 1
 
 4. For Lightbulb:
    --> OPT__DT_USER = 1
+   --> OPT__RESET_FLUID = 1
 
 5. For Core collapse:
    --> MAX_LEVEL = 9
+   --> OPT__RESET_FLUID = 1
 
 Note:
 ========================================

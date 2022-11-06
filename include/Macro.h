@@ -84,6 +84,12 @@
 #define NUC_TABLE_MODE_ENGY 2
 
 
+// nuclear eos solvers
+#define NUC_EOS_SOLVER_ORIG   1
+#define NUC_EOS_SOLVER_LUT    2
+#define NUC_EOS_SOLVER_DIRECT 3
+
+
 // neutrino updating schemes
 #define LIGHTBULB    1
 #define IDSA         2
@@ -276,6 +282,8 @@
 # else
 #  define PASSIVE_NEXT_IDX3   ( YE - 2            )
 # endif
+# else
+#  define PASSIVE_NEXT_IDX3   ( PASSIVE_NEXT_IDX2 )
 # endif
 
 #endif // #if ( NCOMP_PASSIVE > 0 )
@@ -323,6 +331,8 @@
 # else
 #  define FLUX_NEXT_IDX3   ( FLUX_YE - 2     )
 # endif
+# else
+#  define FLUX_NEXT_IDX3   ( FLUX_NEXT_IDX2  )
 # endif
 
 #endif // #if ( NCOMP_PASSIVE > 0 )
@@ -796,6 +806,14 @@
 #  define BIT_REP_ELECTRIC
 //# endif
 # endif // MHD
+
+
+// only apply iterations to broken cells in Interpolate_Iterate()
+#define INTERP_MASK
+
+// used by INTERP_MASK for now but can be applied to other places in the future
+#define MASKED                   true
+#define UNMASKED                 false
 
 
 // extreme values

@@ -282,13 +282,7 @@ static void Src_Deleptonization( real fluid[], const real B[],
       fluid[ENGY] = Hydro_ConEint2Etot( fluid[DENS], fluid[MOMX], fluid[MOMY], fluid[MOMZ], Eint_Update, Emag );
 
 
-//    update temperature initial guess
-#     ifdef TEMP_IG
-      fluid[TEMP_IG] = Out2[1];
-#     endif
-
-
-      // final check
+//    final check
 #     if GAMER_DEBUG
       if (  Hydro_CheckUnphysical( UNPHY_MODE_SING, &Eint_Update, "output internal energy density", ERROR_INFO, UNPHY_VERBOSE )  )
       {

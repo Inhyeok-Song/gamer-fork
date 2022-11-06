@@ -69,7 +69,7 @@ Procedure for outputting new variables:
 
 
 //-------------------------------------------------------------------------------------------------------
-// Function    :  Output_DumpData_Total_HDF5 (FormatVersion = 2455)
+// Function    :  Output_DumpData_Total_HDF5 (FormatVersion = 2458)
 // Description :  Output all simulation data in the HDF5 format, which can be used as a restart file
 //                or loaded by YT
 //
@@ -226,6 +226,11 @@ Procedure for outputting new variables:
 //                2453 : 2022/07/13 --> output OPT__INT_PRIM
 //                2454 : 2022/09/25 --> remove SRC_DLEP_PROF_NVAR and SRC_DLEP_PROF_NBINMAX that no longer exist
 //                2455 : 2022/10/10 --> output OPT__SAME_INTERFACE_B
+//                2456 : 2022/10/17 --> output INTERP_MASK, OPT__CK_INPUT_FLUID
+//                2457 : 2022/10/20 --> output RSOLVER_RESCUE
+//                2458 : 2022/10/24 --> output AUTO_REDUCE_MINMOD_FACTOR, AUTO_REDUCE_MINMOD_MIN,
+//                                             AUTO_REDUCE_INT_MONO_FACTOR, AUTO_REDUCE_INT_MONO_MIN,
+//                                             INT_MONO_COEFF_B
 //-------------------------------------------------------------------------------------------------------
 void Output_DumpData_Total_HDF5( const char *FileName )
 {
@@ -1731,7 +1736,7 @@ void FillIn_KeyInfo( KeyInfo_t &KeyInfo, const int NFieldStored )
 
    const time_t CalTime = time( NULL );   // calendar time
 
-   KeyInfo.FormatVersion        = 2455;
+   KeyInfo.FormatVersion        = 2458;
    KeyInfo.Model                = MODEL;
    KeyInfo.NLevel               = NLEVEL;
    KeyInfo.NCompFluid           = NCOMP_FLUID;
@@ -2196,6 +2201,12 @@ void FillIn_SymConst( SymConst_t &SymConst )
 #  endif
 #  endif // #ifdef MHD
 
+#  ifdef INTERP_MASK
+   SymConst.InterpMask           = 1;
+#  else
+   SymConst.InterpMask           = 0;
+#  endif
+
 
 #  if   ( MODEL == HYDRO )
    SymConst.Flu_BlockSize_x      = FLU_BLOCK_SIZE_X;
@@ -2219,6 +2230,11 @@ void FillIn_SymConst( SymConst_t &SymConst )
    SymConst.CheckIntermediate    = CHECK_INTERMEDIATE;
 #  else
    SymConst.CheckIntermediate    = 0;
+#  endif
+#  ifdef RSOLVER_RESCUE
+   SymConst.RSolverRescue        = RSOLVER_RESCUE;
+#  else
+   SymConst.RSolverRescue        = 0;
 #  endif
 #  ifdef HLL_NO_REF_STATE
    SymConst.HLL_NoRefState       = 1;
@@ -2393,6 +2409,12 @@ void FillIn_InputPara( InputPara_t &InputPara, const int NFieldStored, char Fiel
    InputPara.AutoReduceDt            = AUTO_REDUCE_DT;
    InputPara.AutoReduceDtFactor      = AUTO_REDUCE_DT_FACTOR;
    InputPara.AutoReduceDtFactorMin   = AUTO_REDUCE_DT_FACTOR_MIN;
+#  if ( MODEL == HYDRO )
+   InputPara.AutoReduceMinModFactor  = AUTO_REDUCE_MINMOD_FACTOR;
+   InputPara.AutoReduceMinModMin     = AUTO_REDUCE_MINMOD_MIN;
+#  endif
+   InputPara.AutoReduceIntMonoFactor = AUTO_REDUCE_INT_MONO_FACTOR;
+   InputPara.AutoReduceIntMonoMin    = AUTO_REDUCE_INT_MONO_MIN;
 
 // domain refinement
    InputPara.RegridCount             = REGRID_COUNT;
@@ -2661,6 +2683,9 @@ void FillIn_InputPara( InputPara_t &InputPara, const int NFieldStored, char Fiel
    InputPara.Opt__RefPot_IntScheme   = OPT__REF_POT_INT_SCHEME;
 #  endif
    InputPara.IntMonoCoeff            = INT_MONO_COEFF;
+#  ifdef MHD
+   InputPara.IntMonoCoeffB           = INT_MONO_COEFF_B;
+#  endif
    InputPara.Mono_MaxIter            = MONO_MAX_ITER;
    InputPara.IntOppSign0thOrder      = INT_OPP_SIGN_0TH_ORDER;
 
@@ -2736,6 +2761,7 @@ void FillIn_InputPara( InputPara_t &InputPara, const int NFieldStored, char Fiel
    InputPara.Opt__Ck_InterfaceB      = OPT__CK_INTERFACE_B;
    InputPara.Opt__Ck_DivergenceB     = OPT__CK_DIVERGENCE_B;
 #  endif
+   InputPara.Opt__Ck_InputFluid      = OPT__CK_INPUT_FLUID;
 
 // flag tables
 #  if   ( MODEL == HYDRO )
@@ -3049,6 +3075,7 @@ void GetCompound_SymConst( hid_t &H5_TypeID )
 #  ifdef MHD
    H5Tinsert( H5_TypeID, "BitRep_Electric",      HOFFSET(SymConst_t,BitRep_Electric     ), H5T_NATIVE_INT    );
 #  endif
+   H5Tinsert( H5_TypeID, "InterpMask",           HOFFSET(SymConst_t,InterpMask          ), H5T_NATIVE_INT    );
 
 #  if   ( MODEL == HYDRO )
    H5Tinsert( H5_TypeID, "Flu_BlockSize_x",      HOFFSET(SymConst_t,Flu_BlockSize_x     ), H5T_NATIVE_INT    );
@@ -3057,6 +3084,7 @@ void GetCompound_SymConst( hid_t &H5_TypeID )
    H5Tinsert( H5_TypeID, "CharReconstruction",   HOFFSET(SymConst_t,CharReconstruction  ), H5T_NATIVE_INT    );
    H5Tinsert( H5_TypeID, "LR_Eint",              HOFFSET(SymConst_t,LR_Eint             ), H5T_NATIVE_INT    );
    H5Tinsert( H5_TypeID, "CheckIntermediate",    HOFFSET(SymConst_t,CheckIntermediate   ), H5T_NATIVE_INT    );
+   H5Tinsert( H5_TypeID, "RSolverRescue",        HOFFSET(SymConst_t,RSolverRescue       ), H5T_NATIVE_INT    );
    H5Tinsert( H5_TypeID, "HLL_NoRefState",       HOFFSET(SymConst_t,HLL_NoRefState      ), H5T_NATIVE_INT    );
    H5Tinsert( H5_TypeID, "HLL_IncludeAllWaves",  HOFFSET(SymConst_t,HLL_IncludeAllWaves ), H5T_NATIVE_INT    );
    H5Tinsert( H5_TypeID, "HLLC_WaveSpeed",       HOFFSET(SymConst_t,HLLC_WaveSpeed      ), H5T_NATIVE_INT    );
@@ -3262,6 +3290,12 @@ void GetCompound_InputPara( hid_t &H5_TypeID, const int NFieldStored )
    H5Tinsert( H5_TypeID, "AutoReduceDt",            HOFFSET(InputPara_t,AutoReduceDt           ), H5T_NATIVE_INT     );
    H5Tinsert( H5_TypeID, "AutoReduceDtFactor",      HOFFSET(InputPara_t,AutoReduceDtFactor     ), H5T_NATIVE_DOUBLE  );
    H5Tinsert( H5_TypeID, "AutoReduceDtFactorMin",   HOFFSET(InputPara_t,AutoReduceDtFactorMin  ), H5T_NATIVE_DOUBLE  );
+#  if ( MODEL == HYDRO )
+   H5Tinsert( H5_TypeID, "AutoReduceMinModFactor",  HOFFSET(InputPara_t,AutoReduceMinModFactor ), H5T_NATIVE_DOUBLE  );
+   H5Tinsert( H5_TypeID, "AutoReduceMinModMin",     HOFFSET(InputPara_t,AutoReduceMinModMin    ), H5T_NATIVE_DOUBLE  );
+#  endif
+   H5Tinsert( H5_TypeID, "AutoReduceIntMonoFactor", HOFFSET(InputPara_t,AutoReduceIntMonoFactor), H5T_NATIVE_DOUBLE  );
+   H5Tinsert( H5_TypeID, "AutoReduceIntMonoMin",    HOFFSET(InputPara_t,AutoReduceIntMonoMin   ), H5T_NATIVE_DOUBLE  );
 
 
 // domain refinement
@@ -3521,6 +3555,9 @@ void GetCompound_InputPara( hid_t &H5_TypeID, const int NFieldStored )
    H5Tinsert( H5_TypeID, "Opt__RefPot_IntScheme",   HOFFSET(InputPara_t,Opt__RefPot_IntScheme  ), H5T_NATIVE_INT              );
 #  endif
    H5Tinsert( H5_TypeID, "IntMonoCoeff",            HOFFSET(InputPara_t,IntMonoCoeff           ), H5T_NATIVE_DOUBLE           );
+#  ifdef MHD
+   H5Tinsert( H5_TypeID, "IntMonoCoeffB",           HOFFSET(InputPara_t,IntMonoCoeffB          ), H5T_NATIVE_DOUBLE           );
+#  endif
    H5Tinsert( H5_TypeID, "Mono_MaxIter",            HOFFSET(InputPara_t,Mono_MaxIter           ), H5T_NATIVE_INT              );
    H5Tinsert( H5_TypeID, "IntOppSign0thOrder",      HOFFSET(InputPara_t,IntOppSign0thOrder     ), H5T_NATIVE_INT              );
 
@@ -3596,6 +3633,7 @@ void GetCompound_InputPara( hid_t &H5_TypeID, const int NFieldStored )
    H5Tinsert( H5_TypeID, "Opt__Ck_InterfaceB",      HOFFSET(InputPara_t,Opt__Ck_InterfaceB     ), H5T_NATIVE_INT              );
    H5Tinsert( H5_TypeID, "Opt__Ck_DivergenceB",     HOFFSET(InputPara_t,Opt__Ck_DivergenceB    ), H5T_NATIVE_INT              );
 #  endif
+   H5Tinsert( H5_TypeID, "Opt__Ck_InputFluid",      HOFFSET(InputPara_t,Opt__Ck_InputFluid     ), H5T_NATIVE_INT              );
 
 // flag tables
 #  if ( NLEVEL > 1 )

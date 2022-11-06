@@ -83,6 +83,7 @@ SIMU_OPTION += -DNCOMP_PASSIVE_USER=0
 
 # equation of state: EOS_GAMMA/EOS_ISOTHERMAL/EOS_NUCLEAR/EOS_TABULAR/EOS_USER
 # --> must be set when MODEL=HYDRO; must also enable BAROTROPIC_EOS for EOS_ISOTHERMAL
+# --> must also enable NUC_TABLE_MODE and NUC_EOS_SOLVER for EOS_NUCLEAR
 SIMU_OPTION += -DEOS=EOS_GAMMA
 
 # whether or not the EOS set above is barotropic
@@ -91,6 +92,10 @@ SIMU_OPTION += -DEOS=EOS_GAMMA
 
 # nuclear EoS table default mode: NUC_TABLE_MODE_TEMP/NUC_TABLE_MODE_ENGY
 #SIMU_OPTION += -DNUC_TABLE_MODE=NUC_TABLE_MODE_TEMP
+
+# nuclear EoS solver: NUC_EOS_SOLVER_ORIG/NUC_EOS_SOLVER_LUT/NUC_EOS_SOLVER_DIRECT
+# --> NUC_TABLE_MODE_ENGY only supports NUC_EOS_SOLVER_LUT
+#SIMU_OPTION += -DNUC_EOS_SOLVER=NUC_EOS_SOLVER_DIRECT
 
 # neutrino updating scheme: LIGHTBULB/IDSA/M1
 #SIMU_OPTION += -DNEUTRINO_SCHEME=LIGHTBULB
@@ -507,7 +512,7 @@ CPU_FILE    += CPU_FluidSolver_RTVD.cpp  CPU_FluidSolver_MHM.cpp  CPU_FluidSolve
 
 CPU_FILE    += CPU_EoS_Gamma.cpp  CPU_EoS_User_Template.cpp  CPU_EoS_Isothermal.cpp  CPU_EoS_Nuclear.cpp \
                EoS_Init.cpp  EoS_End.cpp  EoS_End_Nuclear.cpp  NuclearEoS.cpp  cubinterp_some.cpp  linterp_some.cpp \
-               findtoreps.cpp  findtemp_NR_bisection.cpp  readtable.cpp
+               findtoreps.cpp  findtemp_NR_bisection.cpp  readtable.cpp  findtoreps_direct.cpp
 
 CPU_FILE    += Hydro_Init_ByFunction_AssignData.cpp  Hydro_Aux_Check_Negative.cpp \
                Hydro_BoundaryCondition_Reflecting.cpp  Hydro_BoundaryCondition_Outflow.cpp \

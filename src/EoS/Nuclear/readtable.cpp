@@ -127,9 +127,11 @@ void nuc_eos_C_ReadTable( char *nuceos_table_name )
    READ_EOS_HDF5( "pointsenergy",   &g_neps,      H5T_NATIVE_INT, H5S_ALL );
 #  endif
    READ_EOS_HDF5( "pointsye",       &g_nye,       H5T_NATIVE_INT, H5S_ALL );
+#  if ( NUC_EOS_SOLVER != NUC_EOS_SOLVER_ORIG )
    READ_EOS_HDF5( "pointsrho_mode", &g_nrho_mode, H5T_NATIVE_INT, H5S_ALL );
    READ_EOS_HDF5( "points_mode",    &g_nmode,     H5T_NATIVE_INT, H5S_ALL );
    READ_EOS_HDF5( "pointsye_mode",  &g_nye_mode,  H5T_NATIVE_INT, H5S_ALL );
+#  endif
 
 
 #  if ( NUC_TABLE_MODE == NUC_TABLE_MODE_TEMP )
@@ -143,13 +145,14 @@ void nuc_eos_C_ReadTable( char *nuceos_table_name )
    if (  ! ( g_alltables      = (real*)malloc(g_nrho*n_def_mode*g_nye*NUC_TABLE_NVAR*sizeof(real)) )  )
       Aux_Error( ERROR_INFO, "cannot allocate memory for EOS table !!\n" );
 
-   if (  ! ( g_alltables_mode = (real*)malloc(g_nrho_mode*g_nmode*g_nye_mode*3      *sizeof(real)) )  )
-      Aux_Error( ERROR_INFO, "cannot allocate memory for EOS table !!\n" );
-
    if (  ! ( g_logrho         = (real*)malloc(g_nrho                                *sizeof(real)) )  )
       Aux_Error( ERROR_INFO, "cannot allocate memory for EOS table !!\n" );
 
    if (  ! ( g_yes            = (real*)malloc(g_nye                                 *sizeof(real)) )  )
+      Aux_Error( ERROR_INFO, "cannot allocate memory for EOS table !!\n" );
+
+#  if ( NUC_EOS_SOLVER != NUC_EOS_SOLVER_ORIG )
+   if (  ! ( g_alltables_mode = (real*)malloc(g_nrho_mode*g_nmode*g_nye_mode*3      *sizeof(real)) )  )
       Aux_Error( ERROR_INFO, "cannot allocate memory for EOS table !!\n" );
 
    if (  ! ( g_logrho_mode    = (real*)malloc(g_nrho_mode                           *sizeof(real)) )  )
@@ -163,14 +166,17 @@ void nuc_eos_C_ReadTable( char *nuceos_table_name )
 
    if (  ! ( g_yes_mode       = (real*)malloc(g_nye_mode                            *sizeof(real)) )  )
       Aux_Error( ERROR_INFO, "cannot allocate memory for EOS table !!\n" );
+#  endif
 
 #  if ( NUC_TABLE_MODE == NUC_TABLE_MODE_TEMP )
 
    if (  ! ( g_logtemp        = (real*)malloc(n_def_mode                            *sizeof(real)) )  )
       Aux_Error( ERROR_INFO, "cannot allocate memory for EOS table !!\n" );
 
+#  if ( NUC_EOS_SOLVER != NUC_EOS_SOLVER_ORIG )
    if (  ! ( g_logeps_mode    = (real*)malloc(g_nmode                               *sizeof(real)) )  )
       Aux_Error( ERROR_INFO, "cannot allocate memory for EOS table !!\n" );
+#  endif
 
 #  else
 
@@ -224,6 +230,7 @@ void nuc_eos_C_ReadTable( char *nuceos_table_name )
    READ_EOSTABLE_HDF5( "gamma",     NUC_VAR_IDX_GAMMA );
 
 // energy for temp, entr modes
+#  if ( NUC_EOS_SOLVER != NUC_EOS_SOLVER_ORIG )
 #  if ( NUC_TABLE_MODE == NUC_TABLE_MODE_TEMP )
    READ_EOSTABLE_MODE_HDF5( "logtemp_ener",   NUC_VAR_IDX_EORT );
    READ_EOSTABLE_MODE_HDF5( "logtemp_entr",   NUC_VAR_IDX_ENTR );
@@ -233,21 +240,26 @@ void nuc_eos_C_ReadTable( char *nuceos_table_name )
    READ_EOSTABLE_MODE_HDF5( "logenergy_entr", NUC_VAR_IDX_ENTR );
    READ_EOSTABLE_MODE_HDF5( "logenergy_prss", NUC_VAR_IDX_PRES );
 #  endif
+#  endif
 
 // read additional tables and variables
    READ_EOS_HDF5( "logrho",         g_logrho,        H5T_GAMER_REAL,    H5S_ALL );
    READ_EOS_HDF5( "ye",             g_yes,           H5T_GAMER_REAL,    H5S_ALL );
+   READ_EOS_HDF5( "energy_shift",  &g_energy_shift,  H5T_NATIVE_DOUBLE, H5S_ALL );
+#  if ( NUC_TABLE_MODE == NUC_TABLE_MODE_TEMP )
+   READ_EOS_HDF5( "logtemp",        g_logtemp,       H5T_GAMER_REAL,    H5S_ALL );
+#  if ( NUC_EOS_SOLVER != NUC_EOS_SOLVER_ORIG )
+   READ_EOS_HDF5( "logenergy_mode", g_logeps_mode,   H5T_GAMER_REAL,    H5S_ALL );
+#  endif
+#  else
+   READ_EOS_HDF5( "logenergy",      g_logeps,        H5T_GAMER_REAL,    H5S_ALL );
+   READ_EOS_HDF5( "logtemp_mode",   g_logtemp_mode,  H5T_GAMER_REAL,    H5S_ALL );
+#  endif // if ( NUC_TABLE_MODE == NUC_TABLE_MODE_TEMP )
+#  if ( NUC_EOS_SOLVER != NUC_EOS_SOLVER_ORIG )
    READ_EOS_HDF5( "logrho_mode",    g_logrho_mode,   H5T_GAMER_REAL,    H5S_ALL );
    READ_EOS_HDF5( "entropy_mode",   g_entr_mode,     H5T_GAMER_REAL,    H5S_ALL );
    READ_EOS_HDF5( "logpress_mode",  g_logprss_mode,  H5T_GAMER_REAL,    H5S_ALL );
    READ_EOS_HDF5( "ye_mode",        g_yes_mode,      H5T_GAMER_REAL,    H5S_ALL );
-   READ_EOS_HDF5( "energy_shift",  &g_energy_shift,  H5T_NATIVE_DOUBLE, H5S_ALL );
-#  if ( NUC_TABLE_MODE == NUC_TABLE_MODE_TEMP )
-   READ_EOS_HDF5( "logtemp",        g_logtemp,       H5T_GAMER_REAL,    H5S_ALL );
-   READ_EOS_HDF5( "logenergy_mode", g_logeps_mode,   H5T_GAMER_REAL,    H5S_ALL );
-#  else
-   READ_EOS_HDF5( "logenergy",      g_logeps,        H5T_GAMER_REAL,    H5S_ALL );
-   READ_EOS_HDF5( "logtemp_mode",   g_logtemp_mode,  H5T_GAMER_REAL,    H5S_ALL );
 #  endif
 
 
@@ -258,23 +270,24 @@ void nuc_eos_C_ReadTable( char *nuceos_table_name )
 
 // set the EoS table pointers
    h_EoS_Table[NUC_TAB_ALL      ] = g_alltables;
-   h_EoS_Table[NUC_TAB_ALL_MODE ] = g_alltables_mode;
    h_EoS_Table[NUC_TAB_RHO      ] = g_logrho;
-#  if   ( NUC_TABLE_MODE == NUC_TABLE_MODE_TEMP )
+   h_EoS_Table[NUC_TAB_YE       ] = g_yes;
+#  if ( NUC_TABLE_MODE == NUC_TABLE_MODE_TEMP )
    h_EoS_Table[NUC_TAB_TORE     ] = g_logtemp;
+#  if ( NUC_EOS_SOLVER != NUC_EOS_SOLVER_ORIG )
+   h_EoS_Table[NUC_TAB_EORT_MODE] = g_logeps_mode;
+#  endif
 #  else
    h_EoS_Table[NUC_TAB_TORE     ] = g_logeps;
-#  endif
-   h_EoS_Table[NUC_TAB_YE       ] = g_yes;
-   h_EoS_Table[NUC_TAB_RHO_MODE ] = g_logrho_mode;
-#  if ( NUC_TABLE_MODE == NUC_TABLE_MODE_TEMP )
-   h_EoS_Table[NUC_TAB_EORT_MODE] = g_logeps_mode;
-#  else
    h_EoS_Table[NUC_TAB_EORT_MODE] = g_logtemp_mode;
-#  endif
+#  endif // if ( NUC_TABLE_MODE == NUC_TABLE_MODE_TEMP )
+#  if ( NUC_EOS_SOLVER != NUC_EOS_SOLVER_ORIG )
+   h_EoS_Table[NUC_TAB_ALL_MODE ] = g_alltables_mode;
+   h_EoS_Table[NUC_TAB_RHO_MODE ] = g_logrho_mode;
    h_EoS_Table[NUC_TAB_ENTR_MODE] = g_entr_mode;
    h_EoS_Table[NUC_TAB_PRES_MODE] = g_logprss_mode;
    h_EoS_Table[NUC_TAB_YE_MODE  ] = g_yes_mode;
+#  endif
 
 
    if ( MPI_Rank == 0 )    Aux_Message( stdout, "%s ... done\n", __FUNCTION__ );
