@@ -56,6 +56,7 @@ static int        CCSN_Eint_Mode;                  // Mode of obtaining internal
        double     CCSN_CC_CentralDensFac;          // factor that reduces the dt constrained by the central density (in cgs) during the core collapse
        double     CCSN_CC_Red_DT;                  // reduced time step (in s) when the central density exceeds CCSN_CC_CentralDensFac before bounce
        double     CCSN_MaxRefine_RadFac;           // factor that determines the maximum refinement level based on distance from the box center
+       double     CCSN_Max_Ang_Res;                // allowed maximum angular resolution for the refinement
        double     CCSN_LB_TimeFac;                 // factor that scales the dt constrained by lightbulb scheme
        int        CCSN_CC_Rot;                     // mode for rotational profile (0:off, 1:analytical, 2:table)
                                                    // --> analytical formula: Omega(r)=Omega_0*[R_0^2/(r^2+R_0^2)], where r is the spherical radius
@@ -166,6 +167,7 @@ void SetParameter()
    ReadPara->Add( "CCSN_CC_MaxRefine_Dens1",  &CCSN_CC_MaxRefine_Dens1,  1.0e11,        0.0,              NoMax_double      );
    ReadPara->Add( "CCSN_CC_MaxRefine_Dens2",  &CCSN_CC_MaxRefine_Dens2,  1.0e12,        0.0,              NoMax_double      );
    ReadPara->Add( "CCSN_CC_CentralDensFac",   &CCSN_CC_CentralDensFac,   1.0e13,        Eps_double,       NoMax_double      );
+   ReadPara->Add( "CCSN_Max_Ang_Res",         &CCSN_Max_Ang_Res,         -1.0,          NoMin_double,     180.0             );
    ReadPara->Add( "CCSN_CC_Red_DT",           &CCSN_CC_Red_DT,           1.0e-5,        Eps_double,       NoMax_double      );
    ReadPara->Add( "CCSN_MaxRefine_RadFac",    &CCSN_MaxRefine_RadFac,    0.15,          0.0,              NoMax_double      );
    ReadPara->Add( "CCSN_LB_TimeFac",          &CCSN_LB_TimeFac,          0.1,           Eps_double,       1.0               );
@@ -312,6 +314,8 @@ void SetParameter()
       if ( CCSN_CC_MaxRefine_Flag1 ) {
       Aux_Message( stdout, "  reduced maxmimum refinement lv 1                    = %d\n",     CCSN_CC_MaxRefine_LV1    );
       Aux_Message( stdout, "  central density threshold for CCSN_CC_MaxRefine_LV1 = %13.7e\n", CCSN_CC_MaxRefine_Dens1  ); }
+      if ( CCSN_Max_Ang_Res > 0 )
+      Aux_Message( stdout, "  maximum allowed angular resolution in degree        = %13.7e\n", CCSN_Max_Ang_Res         );
       if ( CCSN_CC_MaxRefine_Flag2 ) {
       Aux_Message( stdout, "  reduced maxmimum refinement lv 2                    = %d\n",     CCSN_CC_MaxRefine_LV2    );
       Aux_Message( stdout, "  central density threshold for CCSN_CC_MaxRefine_LV2 = %13.7e\n", CCSN_CC_MaxRefine_Dens2  ); }

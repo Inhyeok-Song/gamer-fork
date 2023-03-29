@@ -20,4 +20,6 @@ CCSN_Eint_Mode   1                                 # Mode of obtaining internal 
                                                    # ( 1=Temp Mode: Eint(dens, temp, [Ye])
                                                    #   2=Pres Mode: Eint(dens, pres, [Ye]) )
 
+CCSN_Max_Ang_Res      -1                           # maximum allowed angular resolution in degree  [-1.0]
+
 CCSN_Is_PostBounce     1                           # boolean that indicates whether core bounce has occurred  [0]

@@ -14,6 +14,7 @@ extern bool   CCSN_Is_PostBounce;
 extern double CCSN_Rsh_Max;
 extern double CCSN_Rsh_Ave;
 
+extern double CCSN_Max_Ang_Res;
 
 
 //-------------------------------------------------------------------------------------------------------
@@ -188,6 +189,11 @@ bool Flag_Region_CCSN( const int i, const int j, const int k, const int lv, cons
    while ( ratio )   { dlv += 1; ratio >>= 1; }
 
    if ( lv + dlv > MAX_LEVEL )  Within = false;
+
+
+   const double theta_max = CCSN_Max_Ang_Res * M_PI/180.0;
+   if ( Within  &&  dh < R*theta_max )
+      Within = false;
 
 
    return Within;
