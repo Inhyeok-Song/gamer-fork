@@ -2,7 +2,7 @@
 #include "NuclearEoS.h"
 
 
-extern bool   IsInit_dEdt_Nu;
+extern bool   IsInit_dEdt_Nu[NLEVEL];
 extern double CCSN_LB_TimeFac;
 extern double CCSN_CC_CentralDensFac;
 extern double CCSN_CC_Red_DT;
@@ -88,7 +88,7 @@ double Mis_GetTimeStep_Lightbulb( const int lv, const double dTime_dt )
                   real dEint_Code = NULL_REAL;
 
 
-            if ( IsInit_dEdt_Nu )
+            if ( IsInit_dEdt_Nu[lv] )
             {
 //             use the stored neutrino heating/cooling rate
 #              ifdef DEDT_NU
@@ -116,7 +116,7 @@ double Mis_GetTimeStep_Lightbulb( const int lv, const double dTime_dt )
 #              ifdef DEDT_NU
                dEint_Code = fluid[DEDT_NU];
 #              endif
-            } // if ( IsInit_dEdt_Nu ) ... else ...
+            } // if ( IsInit_dEdt_Nu[lv] ) ... else ...
 
 
             const double dt_LB_Inv_ThisCell = FABS( dEint_Code / Eint_Code );

@@ -519,7 +519,7 @@ void Detect_Shock()
    for (int lv=0; lv<NLEVEL; lv++)
    {
       const double dh        = amr->dh[lv];
-      const double _dv       = 1.0 / CUBE( dh );
+      const double dv        = CUBE( dh );
       const int    NTotal    = amr->NPatchComma[lv][1] / 8;
             int   *PID0_List = new int [NTotal];
 
@@ -618,8 +618,8 @@ void Detect_Shock()
                {
                   OMP_Shock_Min   [TID]  = fmin( r, OMP_Shock_Min[TID] );
                   OMP_Shock_Max   [TID]  = fmax( r, OMP_Shock_Max[TID] );
-                  OMP_Shock_Ave   [TID] += r * _dv;
-                  OMP_Shock_Weight[TID] += _dv;
+                  OMP_Shock_Ave   [TID] += r * dv;
+                  OMP_Shock_Weight[TID] += dv;
                   OMP_Shock_Found [TID]  = true;
                }
 

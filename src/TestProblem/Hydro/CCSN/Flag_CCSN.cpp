@@ -71,7 +71,7 @@ bool Flag_CoreCollapse( const int i, const int j, const int k, const int lv, con
          Flag = true;
 
 //    (2-b) refine the region with r < 30 km
-      if ( r * UNIT_L < 3e6 )
+      if ( r * UNIT_L < 8e6 )
          Flag = true;
    }
 
@@ -133,7 +133,7 @@ bool Flag_Lightbulb( const int i, const int j, const int k, const int lv, const 
 
 //    (2-b) the cell width at son level (lv+1) is larger than the threshold
       const double Max_CellWidth = r * CCSN_Min_Ang_Res * (M_PI/180.0) / SQRT(3.0);
-      Flag = ( 0.5 * dh ) > Max_CellWidth;
+      Flag = dh > Max_CellWidth;
    }
 
 
@@ -179,7 +179,7 @@ bool Flag_Region_CCSN( const int i, const int j, const int k, const int lv, cons
    const double Min_CellWidth = r * CCSN_Max_Ang_Res * (M_PI/180.0);
    const double Max_CellWidth = r * CCSN_Min_Ang_Res * (M_PI/180.0) / SQRT(3.0);  // maximum allowed cell size
 
-   if (  r * UNIT_L > 3e6  &&  dh < Max_CellWidth  )
+   if (  r * UNIT_L > 8e6  &&  dh < Max_CellWidth  )
       Within = ( 0.5 * dh ) > Min_CellWidth;
 
 
