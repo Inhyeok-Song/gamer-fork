@@ -179,7 +179,7 @@ bool Flag_Region_CCSN( const int i, const int j, const int k, const int lv, cons
    const double Min_CellWidth = r * CCSN_Max_Ang_Res * (M_PI/180.0);
    const double Max_CellWidth = r * CCSN_Min_Ang_Res * (M_PI/180.0) / SQRT(3.0);  // maximum allowed cell size
 
-   if (  r * UNIT_L > 8e6  &&  dh < Max_CellWidth  )
+   if (  r * UNIT_L > 3e6  &&  dh < Max_CellWidth  )
       Within = ( 0.5 * dh ) > Min_CellWidth;
 
 
