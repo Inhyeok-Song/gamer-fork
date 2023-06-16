@@ -24,6 +24,8 @@ extern void (*Init_Function_User_Ptr)( real fluid[], const double x, const doubl
 #ifdef MHD
 extern void (*Init_Function_BField_User_Ptr)( real magnetic[], const double x, const double y, const double z, const double Time,
                                               const int lv, double AuxArray[] );
+extern double (*Init_BField_ByVecPot_User_Ptr)( const double x, const double y, const double z, const double Time,
+                                                const int lv, const char Component, double AuxArray[] );
 #endif
 extern void (*Init_ByFile_User_Ptr)( real fluid_out[], const real fluid_in[], const int nvar_in,
                                      const double x, const double y, const double z, const double Time,
@@ -69,6 +71,9 @@ extern void (*EoS_End_Ptr)();
 #endif
 extern void (*Src_Init_User_Ptr)();
 extern void (*Init_DerivedField_User_Ptr)();
+#ifdef FEEDBACK
+extern void (*FB_Init_User_Ptr)();
+#endif
 
 
 // helper macro for printing warning messages when resetting parameters
