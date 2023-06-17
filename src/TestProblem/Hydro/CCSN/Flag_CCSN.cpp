@@ -201,7 +201,7 @@ bool Flag_Region_CCSN( const int i, const int j, const int k, const int lv, cons
 
    // while ( ratio )   { dlv += 1; ratio >>= 1; }
 
-   if ( lv + dlv > MAX_LEVEL )  Within = false;
+   // if ( lv + dlv > MAX_LEVEL )  Within = false;
 
 
    return Within;
