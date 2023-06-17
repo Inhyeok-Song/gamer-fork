@@ -316,7 +316,6 @@ void SetParameter()
       if ( CCSN_Prob != Migration_Test ) {
       Aux_Message( stdout, "  minimum allowed angular resolution (in degree)      = %13.7e\n", CCSN_Min_Ang_Res         );
       Aux_Message( stdout, "  maximum allowed angular resolution (in degree)      = %13.7e\n", CCSN_Max_Ang_Res         );
-      Aux_Message( stdout, "  scaling factor for lightbulb dt                     = %13.7e\n", CCSN_LB_TimeFac          );
       Aux_Message( stdout, "  scaling factor for lightbulb/leakage dt             = %13.7e\n", CCSN_NuHeat_TimeFac      );
       Aux_Message( stdout, "  has core bounce occurred                            = %d\n",     CCSN_Is_PostBounce       );   }
       if ( CCSN_Prob == Core_Collapse ) {
