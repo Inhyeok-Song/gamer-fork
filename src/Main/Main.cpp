@@ -381,6 +381,7 @@ real (*h_Flu_Array_S_Out[2])[FLU_NOUT_S][ CUBE(PS1)      ]         = { NULL, NUL
 real (*h_Mag_Array_S_In [2])[NCOMP_MAG][ SRC_NXT_P1*SQR(SRC_NXT) ] = { NULL, NULL };
 #endif
 double (*h_Corner_Array_S[2])[3]                                   = { NULL, NULL };
+int     *h_Is_Son_Array_S[2]                                       = { NULL, NULL };
 #if ( MODEL == HYDRO )
 real  *h_SrcLeakage_Radius                                         = NULL;
 real  *h_SrcLeakage_tau                                            = NULL;
@@ -466,6 +467,7 @@ real (*d_Flu_Array_S_Out)[FLU_NOUT_S][ CUBE(PS1)      ]            = NULL;
 real (*d_Mag_Array_S_In)[NCOMP_MAG  ][ SRC_NXT_P1*SQR(SRC_NXT) ]   = NULL;
 #endif
 double (*d_Corner_Array_S)[3]                                      = NULL;
+int    (*d_Is_Son_Array_S)                                         = NULL;
 #if ( MODEL == HYDRO )
 real  *d_SrcLeakage_Radius                                         = NULL;
 real  *d_SrcLeakage_tau                                            = NULL;

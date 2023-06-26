@@ -27,6 +27,7 @@
 //                g_Flu_Array_Out   : Array to store the output fluid variables
 //                g_Mag_Array_In    : Array storing the input B field (for MHD only)
 //                g_Corner_Array    : Array storing the physical corner coordinates of each patch
+//                g_Is_Son_Array    : Array storing whether each patch has a son level or not
 //                SrcTerms          : Structure storing all source-term variables
 //                NPatchGroup       : Number of patch groups to be evaluated
 //                dt                : Time interval to advance solution
@@ -45,7 +46,7 @@ void CUSRC_SrcSolver_IterateAllCells(
    const real g_Flu_Array_In [][FLU_NIN_S ][ CUBE(SRC_NXT)           ],
          real g_Flu_Array_Out[][FLU_NOUT_S][ CUBE(PS1)               ],
    const real g_Mag_Array_In [][NCOMP_MAG ][ SRC_NXT_P1*SQR(SRC_NXT) ],
-   const double g_Corner_Array[][3],
+   const double g_Corner_Array[][3], const int h_Is_Son_Array[],
    const SrcTerms_t SrcTerms, const int NPatchGroup, const real dt, const real dh,
    const double TimeNew, const double TimeOld,
    const real MinDens, const real MinPres, const real MinEint, const EoS_t EoS )
@@ -54,14 +55,14 @@ void CPU_SrcSolver_IterateAllCells(
    const real g_Flu_Array_In [][FLU_NIN_S ][ CUBE(SRC_NXT)           ],
          real g_Flu_Array_Out[][FLU_NOUT_S][ CUBE(PS1)               ],
    const real g_Mag_Array_In [][NCOMP_MAG ][ SRC_NXT_P1*SQR(SRC_NXT) ],
-   const double g_Corner_Array[][3],
+   const double g_Corner_Array[][3], const int h_Is_Son_Array[],
    const SrcTerms_t SrcTerms, const int NPatchGroup, const real dt, const real dh,
    const double TimeNew, const double TimeOld,
    const real MinDens, const real MinPres, const real MinEint, const EoS_t EoS )
 #endif
 {
 
-// loop over all patches
+
 // --> CPU/GPU solver: use different (OpenMP threads) / (CUDA thread blocks)
 //     to work on different patches
 #  ifdef __CUDACC__
@@ -75,11 +76,10 @@ void CPU_SrcSolver_IterateAllCells(
       const double y0 = g_Corner_Array[p][1] - SRC_GHOST_SIZE*dh;
       const double z0 = g_Corner_Array[p][2] - SRC_GHOST_SIZE*dh;
 
-//###REVISE: support ghost zones
+//    ###REVISE: support ghost zones
       CGPU_LOOP( idx_out, CUBE(PS1) )
       {
-//       compute the cell-centered coordinates
-         double x, y, z;
+//       find the cell index
          int    i_in, j_in, k_in, idx_in;
 
          i_in   = SRC_GHOST_SIZE + idx_out % PS1;
@@ -87,46 +87,54 @@ void CPU_SrcSolver_IterateAllCells(
          k_in   = SRC_GHOST_SIZE + idx_out / SQR(PS1);
          idx_in = IDX321( i_in, j_in, k_in, SRC_NXT, SRC_NXT );
 
-         x      = x0 + double(i_in*dh);
-         y      = y0 + double(j_in*dh);
-         z      = z0 + double(k_in*dh);
-
 
 //       get the input arrays
          real fluid[FLU_NIN_S];
 
          for (int v=0; v<FLU_NIN_S; v++)  fluid[v] = g_Flu_Array_In[p][v][idx_in];
 
-#        ifdef MHD
-         real B[NCOMP_MAG];
-         MHD_GetCellCenteredBField( B, g_Mag_Array_In[p][MAGX], g_Mag_Array_In[p][MAGY], g_Mag_Array_In[p][MAGZ],
-                                    SRC_NXT, SRC_NXT, SRC_NXT, i_in, j_in, k_in );
-#        else
-         real *B = NULL;
-#        endif
+
+//       only update cells without sons
+         if ( h_Is_Son_Array[p] == -1 ) {
+//          compute the cell-centered coordinates
+
+            double x, y, z;
+            x      = x0 + double(i_in*dh);
+            y      = y0 + double(j_in*dh);
+            z      = z0 + double(k_in*dh);
+
+#           ifdef MHD
+            real B[NCOMP_MAG];
+            MHD_GetCellCenteredBField( B, g_Mag_Array_In[p][MAGX], g_Mag_Array_In[p][MAGY], g_Mag_Array_In[p][MAGZ],
+                                       SRC_NXT, SRC_NXT, SRC_NXT, i_in, j_in, k_in );
+#           else
+            real *B = NULL;
+#           endif
 
 
-//       add all source terms one by one
-#        if ( MODEL == HYDRO )
-//       (1) deleptonization
-         if ( SrcTerms.Deleptonization )
-            SrcTerms.Dlep_FuncPtr( fluid, B, &SrcTerms, dt, dh, x, y, z, TimeNew, TimeOld, MinDens, MinPres, MinEint, &EoS,
-                                   SrcTerms.Dlep_AuxArrayDevPtr_Flt, SrcTerms.Dlep_AuxArrayDevPtr_Int );
+//          add all source terms one by one
+#           if ( MODEL == HYDRO )
+//          (1) deleptonization
+            if ( SrcTerms.Deleptonization )
+               SrcTerms.Dlep_FuncPtr( fluid, B, &SrcTerms, dt, dh, x, y, z, TimeNew, TimeOld, MinDens, MinPres, MinEint, &EoS,
+                                    SrcTerms.Dlep_AuxArrayDevPtr_Flt, SrcTerms.Dlep_AuxArrayDevPtr_Int );
 
-//       (2) lightbulb
-         if ( SrcTerms.Lightbulb )
-            SrcTerms.Lightbulb_FuncPtr( fluid, B, &SrcTerms, dt, dh, x, y, z, TimeNew, TimeOld, MinDens, MinPres, MinEint, &EoS,
-                                        SrcTerms.Lightbulb_AuxArrayDevPtr_Flt, SrcTerms.Lightbulb_AuxArrayDevPtr_Int );
-//       (3) leakage
-         if ( SrcTerms.Leakage )
-            SrcTerms.Leakage_FuncPtr( fluid, B, &SrcTerms, dt, dh, x, y, z, TimeNew, TimeOld, MinDens, MinPres, MinEint, &EoS,
-                                      SrcTerms.Leakage_AuxArrayDevPtr_Flt, SrcTerms.Leakage_AuxArrayDevPtr_Int );
-#        endif // if ( MODEL == HYDRO )
+//          (2) lightbulb
+            if ( SrcTerms.Lightbulb )
+               SrcTerms.Lightbulb_FuncPtr( fluid, B, &SrcTerms, dt, dh, x, y, z, TimeNew, TimeOld, MinDens, MinPres, MinEint, &EoS,
+                                          SrcTerms.Lightbulb_AuxArrayDevPtr_Flt, SrcTerms.Lightbulb_AuxArrayDevPtr_Int );
+//          (3) leakage
+            if ( SrcTerms.Leakage )
+               SrcTerms.Leakage_FuncPtr( fluid, B, &SrcTerms, dt, dh, x, y, z, TimeNew, TimeOld, MinDens, MinPres, MinEint, &EoS,
+                                       SrcTerms.Leakage_AuxArrayDevPtr_Flt, SrcTerms.Leakage_AuxArrayDevPtr_Int );
+#            endif // if ( MODEL == HYDRO )
 
-//       (4) user-defined
-         if ( SrcTerms.User )
-            SrcTerms.User_FuncPtr( fluid, B, &SrcTerms, dt, dh, x, y, z, TimeNew, TimeOld, MinDens, MinPres, MinEint, &EoS,
-                                   SrcTerms.User_AuxArrayDevPtr_Flt, SrcTerms.User_AuxArrayDevPtr_Int );
+//          (4) user-defined
+            if ( SrcTerms.User )
+               SrcTerms.User_FuncPtr( fluid, B, &SrcTerms, dt, dh, x, y, z, TimeNew, TimeOld, MinDens, MinPres, MinEint, &EoS,
+                                    SrcTerms.User_AuxArrayDevPtr_Flt, SrcTerms.User_AuxArrayDevPtr_Int );
+
+         } // if ( h_Is_Son_Array[p] == -1 )
 
 //       store the updated results
          for (int v=0; v<FLU_NOUT_S; v++)   g_Flu_Array_Out[p][v][idx_out] = fluid[v];

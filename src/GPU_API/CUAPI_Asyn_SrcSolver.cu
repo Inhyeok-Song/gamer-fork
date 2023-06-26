@@ -10,7 +10,7 @@ void CUSRC_SrcSolver_IterateAllCells(
    const real g_Flu_Array_In [][FLU_NIN_S ][ CUBE(SRC_NXT)           ],
          real g_Flu_Array_Out[][FLU_NOUT_S][ CUBE(PS1)               ],
    const real g_Mag_Array_In [][NCOMP_MAG ][ SRC_NXT_P1*SQR(SRC_NXT) ],
-   const double g_Corner_Array[][3],
+   const double g_Corner_Array[][3], const int g_Is_Son_Array[],
    const SrcTerms_t SrcTerms, const int NPatchGroup, const real dt, const real dh,
    const double TimeNew, const double TimeOld,
    const real MinDens, const real MinPres, const real MinEint, const EoS_t EoS );
@@ -24,6 +24,7 @@ extern real (*d_Mag_Array_S_In)[NCOMP_MAG  ][ SRC_NXT_P1*SQR(SRC_NXT) ];
 static real (*d_Mag_Array_S_In)[NCOMP_MAG  ][ SRC_NXT_P1*SQR(SRC_NXT) ] = NULL;
 #endif
 extern double (*d_Corner_Array_S)[3];
+extern int    *d_Is_Son_Array_S;
 
 extern cudaStream_t *Stream;
 
@@ -48,6 +49,7 @@ extern cudaStream_t *Stream;
 //                h_Flu_Array_Out   : Host array to store the output fluid variables
 //                h_Mag_Array_In    : Host array storing the input B field (for MHD only)
 //                h_Corner_Array    : Host array storing the physical corner coordinates of each patch
+//                h_Is_Son_Array    : Host array storing whether each patch has a son level or not
 //                SrcTerms          : Structure storing all source-term variables
 //                NPatchGroup       : Number of patch groups to be evaluated
 //                dt                : Time interval to advance solution
@@ -63,7 +65,7 @@ extern cudaStream_t *Stream;
 void CUAPI_Asyn_SrcSolver( const real h_Flu_Array_In [][FLU_NIN_S ][ CUBE(SRC_NXT)           ],
                                  real h_Flu_Array_Out[][FLU_NOUT_S][ CUBE(PS1)               ],
                            const real h_Mag_Array_In [][NCOMP_MAG ][ SRC_NXT_P1*SQR(SRC_NXT) ],
-                           const double h_Corner_Array[][3],
+                           const double h_Corner_Array[][3], const int h_Is_Son_Array[],
                            const SrcTerms_t SrcTerms, const int NPatchGroup, const real dt, const real dh,
                            const double TimeNew, const double TimeOld,
                            const real MinDens, const real MinPres, const real MinEint,
@@ -78,6 +80,7 @@ void CUAPI_Asyn_SrcSolver( const real h_Flu_Array_In [][FLU_NIN_S ][ CUBE(SRC_NX
    if ( h_Mag_Array_In  == NULL )   Aux_Error( ERROR_INFO, "h_Mag_Array_In = NULL !!\n" );
 #  endif
    if ( h_Corner_Array  == NULL )   Aux_Error( ERROR_INFO, "h_Corner_Array = NULL !!\n" );
+   if ( h_Is_Son_Array  == NULL )   Aux_Error( ERROR_INFO, "h_Is_Son_Array = NULL !!\n" );
 #  endif
 
 
@@ -96,6 +99,7 @@ void CUAPI_Asyn_SrcSolver( const real h_Flu_Array_In [][FLU_NIN_S ][ CUBE(SRC_NX
    int *Mag_MemSize_In     = new int [GPU_NStream];
 #  endif
    int *Corner_MemSize     = new int [GPU_NStream];
+   int *Is_Son_MemSize     = new int [GPU_NStream];
 
 // number of patches in each stream
    UsedPatch[0] = 0;
@@ -121,6 +125,7 @@ void CUAPI_Asyn_SrcSolver( const real h_Flu_Array_In [][FLU_NIN_S ][ CUBE(SRC_NX
       Mag_MemSize_In [s] = sizeof(real  )*NPatch_per_Stream[s]*NCOMP_MAG*SRC_NXT_P1*SQR(SRC_NXT);
 #     endif
       Corner_MemSize [s] = sizeof(double)*NPatch_per_Stream[s]*3;
+      Is_Son_MemSize [s] = sizeof(int   )*NPatch_per_Stream[s];
    }
 
 
@@ -140,6 +145,9 @@ void CUAPI_Asyn_SrcSolver( const real h_Flu_Array_In [][FLU_NIN_S ][ CUBE(SRC_NX
 
       CUDA_CHECK_ERROR(  cudaMemcpyAsync( d_Corner_Array_S + UsedPatch[s], h_Corner_Array + UsedPatch[s],
                          Corner_MemSize[s], cudaMemcpyHostToDevice, Stream[s] )  );
+
+      CUDA_CHECK_ERROR(  cudaMemcpyAsync( d_Is_Son_Array_S + UsedPatch[s], h_Is_Son_Array + UsedPatch[s],
+                         Is_Son_MemSize[s], cudaMemcpyHostToDevice, Stream[s] )  );
    } // for (int s=0; s<GPU_NStream; s++)
 
 
@@ -154,6 +162,7 @@ void CUAPI_Asyn_SrcSolver( const real h_Flu_Array_In [][FLU_NIN_S ][ CUBE(SRC_NX
                                         d_Flu_Array_S_Out + UsedPatch[s],
                                         d_Mag_Array_S_In  + UsedPatch[s],
                                         d_Corner_Array_S  + UsedPatch[s],
+                                        d_Is_Son_Array_S  + UsedPatch[s],
                                         SrcTerms, NPatchGroup, dt, dh, TimeNew, TimeOld,
                                         MinDens, MinPres, MinEint, EoS );
 
@@ -180,6 +189,7 @@ void CUAPI_Asyn_SrcSolver( const real h_Flu_Array_In [][FLU_NIN_S ][ CUBE(SRC_NX
    delete [] Mag_MemSize_In;
 #  endif
    delete [] Corner_MemSize;
+   delete [] Is_Son_MemSize;
 
 } // FUNCTION : CUAPI_Asyn_SrcSolver
 

@@ -6,7 +6,7 @@
 //-------------------------------------------------------------------------------------------------------
 // Function    :  Src_Prepare
 // Description :  Prepare the input arrays h_Flu_Array_S_In[], h_Mag_Array_S_In[], and h_Corner_Array_S[]
-//                for source terms
+//                h_Is_Son_Array_S[] for source terms
 //
 // Note        :  1. Always prepare the latest FluSg and MagSg data
 //                2. Prepare FLU_NIN_S fluid variables and NCOMP_MAG B field components
@@ -25,13 +25,14 @@
 //                h_Flu_Array_S_In : Host array to store the prepared fluid   data
 //                h_Mag_Array_S_In : Host array to store the prepared B field data
 //                h_Corner_Array_S : Host array to store the prepared corner  data
+//                h_Is_Son_Array_S : Host array storing whether each patch has a son level or not
 //                NPG              : Number of patch groups prepared at a time
 //                PID0_List        : List recording the target patch indices with LocalID==0
 //-------------------------------------------------------------------------------------------------------
 void Src_Prepare( const int lv, const double PrepTime,
                   real h_Flu_Array_S_In[][FLU_NIN_S][ CUBE(SRC_NXT)           ],
                   real h_Mag_Array_S_In[][NCOMP_MAG][ SRC_NXT_P1*SQR(SRC_NXT) ],
-                  double h_Corner_Array_S[][3],
+                  double h_Corner_Array_S[][3], int h_Is_Son_Array_S[],
                   const int NPG, const int *PID0_List )
 {
 
@@ -77,6 +78,9 @@ void Src_Prepare( const int lv, const double PrepTime,
 
 //       corner coordinates
          for (int d=0; d<3; d++)    h_Corner_Array_S[N][d] = amr->patch[0][lv][PID]->EdgeL[d] + dh_half;
+
+//       store whether it has son
+         h_Is_Son_Array_S[N] = amr->patch[0][lv][PID]->son;
       } // for (int LocalID=0; LocalID<8; LocalID++)
    } // for (int TID=0; TID<NPG; TID++)
 

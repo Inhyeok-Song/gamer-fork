@@ -405,7 +405,7 @@ void Preparation_Step( const Solver_t TSolver, const int lv, const double TimeNe
 
       case SRC_SOLVER:
          Src_Prepare( lv, TimeNew, h_Flu_Array_S_In[ArrayID], h_Mag_Array_S_In[ArrayID], h_Corner_Array_S[ArrayID],
-                      NPG, PID0_List );
+                      h_Is_Son_Array_S[ArrayID], NPG, PID0_List );
       break;
 
       default :
@@ -709,6 +709,7 @@ void Solver( const Solver_t TSolver, const int lv, const double TimeNew, const d
                                h_Flu_Array_S_Out[ArrayID],
                                h_Mag_Array_S_In [ArrayID],
                                h_Corner_Array_S [ArrayID],
+                               h_Is_Son_Array_S [ArrayID],
                                SrcTerms, NPG, dt, dh, TimeNew, TimeOld, MIN_DENS, MIN_PRES, MIN_EINT,
                                GPU_NSTREAM );
 #        else
@@ -716,6 +717,7 @@ void Solver( const Solver_t TSolver, const int lv, const double TimeNew, const d
                                h_Flu_Array_S_Out[ArrayID],
                                h_Mag_Array_S_In [ArrayID],
                                h_Corner_Array_S [ArrayID],
+                               h_Is_Son_Array_S [ArrayID],
                                SrcTerms, NPG, dt, dh, TimeNew, TimeOld, MIN_DENS, MIN_PRES, MIN_EINT );
 #        endif
       break;

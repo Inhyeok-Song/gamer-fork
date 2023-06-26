@@ -587,7 +587,7 @@ void CUAPI_Asyn_dtSolver( const Solver_t TSolver, real h_dt_Array[], const real 
 void CUAPI_Asyn_SrcSolver( const real h_Flu_Array_In [][FLU_NIN_S ][ CUBE(SRC_NXT)           ],
                                  real h_Flu_Array_Out[][FLU_NOUT_S][ CUBE(PS1)               ],
                            const real h_Mag_Array_In [][NCOMP_MAG ][ SRC_NXT_P1*SQR(SRC_NXT) ],
-                           const double h_Corner_Array[][3],
+                           const double h_Corner_Array[][3], const int h_Is_Son_Array[],
                            const SrcTerms_t SrcTerms, const int NPatchGroup, const real dt, const real dh,
                            const double TimeNew, const double TimeOld,
                            const real MinDens, const real MinPres, const real MinEint,
@@ -719,7 +719,7 @@ void Src_AdvanceDt( const int lv, const double TimeNew, const double TimeOld, co
 void Src_Prepare( const int lv, const double PrepTime,
                   real h_Flu_Array_S_In[][FLU_NIN_S][ CUBE(SRC_NXT)           ],
                   real h_Mag_Array_S_In[][NCOMP_MAG][ SRC_NXT_P1*SQR(SRC_NXT) ],
-                  double h_Corner_Array_S[][3],
+                  double h_Corner_Array_S[][3], int h_Is_Son_Array_S[],
                   const int NPG, const int *PID0_List );
 void Src_Close( const int lv, const int SaveSg_Flu, const real h_Flu_Array_S_Out[][FLU_NOUT_S][ CUBE(PS1) ],
                 const int NPG, const int *PID0_List );
@@ -727,7 +727,7 @@ void Src_WorkBeforeMajorFunc( const int lv, const double TimeNew, const double T
 void CPU_SrcSolver( const real h_Flu_Array_In [][FLU_NIN_S ][ CUBE(SRC_NXT)           ],
                           real h_Flu_Array_Out[][FLU_NOUT_S][ CUBE(PS1)               ],
                     const real h_Mag_Array_In [][NCOMP_MAG ][ SRC_NXT_P1*SQR(SRC_NXT) ],
-                    const double h_Corner_Array[][3],
+                    const double h_Corner_Array[][3], const int h_Is_Son_Array[],
                     const SrcTerms_t SrcTerms, const int NPatchGroup, const real dt, const real dh,
                     const double TimeNew, const double TimeOld,
                     const real MinDens, const real MinPres, const real MinEint );

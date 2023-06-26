@@ -154,7 +154,7 @@ void CUSRC_SrcSolver_IterateAllCells(
    const real g_Flu_Array_In [][FLU_NIN_S ][ CUBE(SRC_NXT)           ],
          real g_Flu_Array_Out[][FLU_NOUT_S][ CUBE(PS1)               ],
    const real g_Mag_Array_In [][NCOMP_MAG ][ SRC_NXT_P1*SQR(SRC_NXT) ],
-   const double g_Corner_Array[][3],
+   const double g_Corner_Array[][3], const int g_Is_Son_Array[],
    const SrcTerms_t SrcTerms, const int NPatchGroup, const real dt, const real dh,
    const double TimeNew, const double TimeOld,
    const real MinDens, const real MinPres, const real MinEint, const EoS_t EoS );

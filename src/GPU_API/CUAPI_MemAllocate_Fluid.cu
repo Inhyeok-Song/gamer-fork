@@ -33,6 +33,7 @@ extern real (*d_Flu_Array_T)[FLU_NIN_T][ CUBE(PS1) ];
 extern real (*d_Flu_Array_S_In )[FLU_NIN_S ][ CUBE(SRC_NXT) ];
 extern real (*d_Flu_Array_S_Out)[FLU_NOUT_S][ CUBE(PS1)     ];
 extern double (*d_Corner_Array_S)[3];
+extern int    *d_Is_Son_Array_S;
 #if ( FLU_SCHEME == MHM  ||  FLU_SCHEME == MHM_RP  ||  FLU_SCHEME == CTU )
 extern real (*d_PriVar)      [NCOMP_LR            ][ CUBE(FLU_NXT)     ];
 extern real (*d_Slope_PPM)[3][NCOMP_LR            ][ CUBE(N_SLOPE_PPM) ];
@@ -106,6 +107,7 @@ int CUAPI_MemAllocate_Fluid( const int Flu_NPG, const int Pot_NPG, const int Src
    const long Flu_MemSize_S_In    = sizeof(real  )*Src_NP*FLU_NIN_S *CUBE(SRC_NXT);
    const long Flu_MemSize_S_Out   = sizeof(real  )*Src_NP*FLU_NOUT_S*CUBE(PS1);
    const long Corner_MemSize_S    = sizeof(double)*Src_NP*3;
+   const long Is_Son_MemSize_S    = sizeof(int   )*Src_NP;
 #  if ( MODEL == HYDRO  &&  NEUTRINO_SCHEME == LEAKAGE )
    const long Leak_Rad_MemSize    = sizeof(real  )* SrcTerms.Leakage_NRadius;
    const long Leak_Tau_MemSize    = sizeof(real  )*(SrcTerms.Leakage_NRadius*SrcTerms.Leakage_NTheta*SrcTerms.Leakage_NPhi*3);
@@ -181,6 +183,7 @@ int CUAPI_MemAllocate_Fluid( const int Flu_NPG, const int Pot_NPG, const int Src
       TotalSize += Mag_MemSize_S_In;
 #     endif
       TotalSize += Corner_MemSize_S;
+      TotalSize += Is_Son_MemSize_S;
    }
 
 #  if ( MODEL == HYDRO  &&  NEUTRINO_SCHEME == LEAKAGE )
@@ -246,6 +249,7 @@ int CUAPI_MemAllocate_Fluid( const int Flu_NPG, const int Pot_NPG, const int Src
    CUDA_CHECK_MALLOC(  cudaMalloc( (void**) &d_Mag_Array_S_In,       Mag_MemSize_S_In     )  );
 #  endif
    CUDA_CHECK_MALLOC(  cudaMalloc( (void**) &d_Corner_Array_S,       Corner_MemSize_S     )  );
+   CUDA_CHECK_MALLOC(  cudaMalloc( (void**) &d_Is_Son_Array_S,       Is_Son_MemSize_S     )  );
    }
 
 #  if ( MODEL == HYDRO  &&  NEUTRINO_SCHEME == LEAKAGE )
@@ -310,6 +314,7 @@ int CUAPI_MemAllocate_Fluid( const int Flu_NPG, const int Pot_NPG, const int Src
       CUDA_CHECK_MALLOC(  cudaMallocHost( (void**) &h_Mag_Array_S_In [t],  Mag_MemSize_S_In     )  );
 #     endif
       CUDA_CHECK_MALLOC(  cudaMallocHost( (void**) &h_Corner_Array_S [t],  Corner_MemSize_S     )  );
+      CUDA_CHECK_MALLOC(  cudaMallocHost( (void**) &h_Is_Son_Array_S [t],  Is_Son_MemSize_S     )  );
       }
    } // for (int t=0; t<2; t++)
 

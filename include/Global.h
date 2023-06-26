@@ -391,6 +391,7 @@ extern real       (*h_Flu_Array_S_Out[2])[FLU_NOUT_S][ CUBE(PS1)               ]
 extern real       (*h_Mag_Array_S_In [2])[NCOMP_MAG ][ SRC_NXT_P1*SQR(SRC_NXT) ];
 #endif
 extern double     (*h_Corner_Array_S[2])[3];
+extern int         *h_Is_Son_Array_S[2];
 
 #if ( MODEL == HYDRO )
 extern real        *h_SrcLeakage_Radius;
