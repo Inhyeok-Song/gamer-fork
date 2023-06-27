@@ -11,6 +11,12 @@ extern double CCSN_Min_Ang_Res;
 extern double CCSN_Max_Ang_Res;
 extern double CCSN_CentralDens;
 
+extern double CCSN_REF_RBase;
+
+extern bool   CCSN_Is_PostBounce;
+extern double CCSN_Rsh_Max;
+extern double CCSN_Rsh_Ave;
+
 
 
 //-------------------------------------------------------------------------------------------------------
@@ -181,6 +187,19 @@ bool Flag_Region_CCSN( const int i, const int j, const int k, const int lv, cons
 
    if (  r * UNIT_L > 8e6  &&  dh < Max_CellWidth  )
       Within = ( 0.5 * dh ) > Min_CellWidth;
+
+//    const double dR[3]     = { Pos[0]-Center[0], Pos[1]-Center[1], Pos[2]-Center[2] };
+//    const double R         = sqrt( SQR(dR[0]) + SQR(dR[1]) + SQR(dR[2]) );
+//    const double R_base    = ( CCSN_Is_PostBounce  &&  CCSN_Rsh_Ave > 0.0 )
+//                           ? fmax( 2.0 * CCSN_Rsh_Max - CCSN_Rsh_Ave, CCSN_REF_RBase )
+//                           : CCSN_REF_RBase;
+// 
+//          int    ratio     = (int) ( R / R_base );
+//          int    dlv       = 1;
+// 
+//    while ( ratio )   { dlv += 1; ratio >>= 1; }
+// 
+//    if ( lv + dlv > MAX_LEVEL )  Within = false;
 
 
    return Within;
