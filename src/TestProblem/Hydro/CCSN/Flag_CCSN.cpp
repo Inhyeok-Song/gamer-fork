@@ -7,8 +7,11 @@ extern int    CCSN_CC_MaxRefine_LV1;
 extern int    CCSN_CC_MaxRefine_LV2;
 extern double CCSN_CC_MaxRefine_Dens1;
 extern double CCSN_CC_MaxRefine_Dens2;
-extern double CCSN_MaxRefine_RadFac;
 extern double CCSN_CentralDens;
+extern bool   CCSN_Min_Ang_Flag;
+extern double CCSN_Min_Ang_Res;
+extern bool   CCSN_Max_Ang_Flag;
+extern double CCSN_Max_Ang_Res;
 
 extern double CCSN_REF_RBase;
 
@@ -131,15 +134,15 @@ bool Flag_Lightbulb( const int i, const int j, const int k, const int lv, const 
    if ( r * UNIT_L < 3e6 )
       Flag = true;
 
-   else
+   else if ( CCSN_Min_Ang_Flag )
    {
 //    (2-a) density is larger than the threshold in Input__Flag_User
       if ( Rho[k][j][i] < Threshold[0] )   return false;
 
 //    (2-b) the cell width at son level (lv+1) is larger than the threshold
-      const double Min_CellWidth = r * CCSN_MaxRefine_RadFac;
+      const double Max_CellWidth = r * CCSN_Min_Ang_Res * (M_PI/180.0);
 
-      Flag = ( 0.5 * dh ) > Min_CellWidth;
+      Flag = dh > Max_CellWidth;
    }
 
 
@@ -171,23 +174,40 @@ bool Flag_Region_CCSN( const int i, const int j, const int k, const int lv, cons
    const double Pos[3] = { amr->patch[0][lv][PID]->EdgeL[0] + (i+0.5)*dh,
                            amr->patch[0][lv][PID]->EdgeL[1] + (j+0.5)*dh,
                            amr->patch[0][lv][PID]->EdgeL[2] + (k+0.5)*dh  };
+   const double Center[3] = { 0.5*amr->BoxSize[0], 0.5*amr->BoxSize[1], 0.5*amr->BoxSize[2] };
+   const double dR[3]     = { Pos[0]-Center[0], Pos[1]-Center[1], Pos[2]-Center[2] };
+   const double R         = sqrt( SQR(dR[0]) + SQR(dR[1]) + SQR(dR[2]) );
 
    bool Within = true;
 
 
-   const double Center[3] = { 0.5*amr->BoxSize[0], 0.5*amr->BoxSize[1], 0.5*amr->BoxSize[2] };
-   const double dR[3]     = { Pos[0]-Center[0], Pos[1]-Center[1], Pos[2]-Center[2] };
-   const double R         = sqrt( SQR(dR[0]) + SQR(dR[1]) + SQR(dR[2]) );
-   const double R_base    = ( CCSN_Is_PostBounce  &&  CCSN_Rsh_Ave > 0.0 )
-                          ? fmax( 2.0 * CCSN_Rsh_Max - CCSN_Rsh_Ave, CCSN_REF_RBase )
-                          : CCSN_REF_RBase;
+   if ( CCSN_Max_Ang_Flag ) {
 
-         int    ratio     = (int) ( R / R_base );
-         int    dlv       = 1;
+      const double Min_CellWidth = R * CCSN_Max_Ang_Res * (M_PI/180.0);
+            double Max_CellWidth = __DBL_MAX__;
 
-   while ( ratio )   { dlv += 1; ratio >>= 1; }
+      if ( CCSN_Min_Ang_Flag )
+         Max_CellWidth = R * CCSN_Min_Ang_Res * (M_PI/180.0);
 
-   if ( lv + dlv > MAX_LEVEL )  Within = false;
+      if ( R * UNIT_L > 3e6  &&  dh < Max_CellWidth )
+         Within = ( 0.5 * dh ) > Min_CellWidth;
+
+   }
+
+   else {
+
+      const double R_base    = ( CCSN_Is_PostBounce  &&  CCSN_Rsh_Ave > 0.0 )
+                           ? fmax( 2.0 * CCSN_Rsh_Max - CCSN_Rsh_Ave, CCSN_REF_RBase )
+                           : CCSN_REF_RBase;
+
+            int    ratio     = (int) ( R / R_base );
+            int    dlv       = 1;
+
+      while ( ratio )   { dlv += 1; ratio >>= 1; }
+
+      if ( lv + dlv > MAX_LEVEL )  Within = false;
+
+   }
 
 
    return Within;

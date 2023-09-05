@@ -56,6 +56,10 @@ static int        CCSN_Eint_Mode;                  // Mode of obtaining internal
        double     CCSN_CC_CentralDensFac;          // factor that reduces the dt constrained by the central density (in cgs) during the core collapse
        double     CCSN_CC_Red_DT;                  // reduced time step (in s) when the central density exceeds CCSN_CC_CentralDensFac before bounce
        double     CCSN_MaxRefine_RadFac;           // factor that determines the maximum refinement level based on distance from the box center
+       bool       CCSN_Min_Ang_Flag;               // flag for limiting minimum angular resolution
+       double     CCSN_Min_Ang_Res;                // minimum allowed angular resolution in degree
+       bool       CCSN_Max_Ang_Flag;               // flag for limiting maximum angular resolution
+       double     CCSN_Max_Ang_Res;                // maximum allowed angular resolution in degree
        double     CCSN_NuHeat_TimeFac;             // factor that scales the dt constrained by the lightbulb/leakage scheme
        int        CCSN_CC_Rot;                     // mode for rotational profile (0:off, 1:analytical, 2:table)
                                                    // --> analytical formula: Omega(r)=Omega_0*[R_0^2/(r^2+R_0^2)], where r is the spherical radius
@@ -173,8 +177,11 @@ void SetParameter()
    ReadPara->Add( "CCSN_CC_MaxRefine_Dens1",  &CCSN_CC_MaxRefine_Dens1,  1.0e11,        0.0,              NoMax_double      );
    ReadPara->Add( "CCSN_CC_MaxRefine_Dens2",  &CCSN_CC_MaxRefine_Dens2,  1.0e12,        0.0,              NoMax_double      );
    ReadPara->Add( "CCSN_CC_CentralDensFac",   &CCSN_CC_CentralDensFac,   1.0e13,        Eps_double,       NoMax_double      );
+   ReadPara->Add( "CCSN_Min_Ang_Flag",        &CCSN_Min_Ang_Flag,        true,          Useless_bool,     Useless_bool      );
+   ReadPara->Add( "CCSN_Min_Ang_Res",         &CCSN_Min_Ang_Res,         15.0,          0.0,              NoMax_double      );
+   ReadPara->Add( "CCSN_Max_Ang_Flag",        &CCSN_Max_Ang_Flag,        false,         Useless_bool,     Useless_bool      );
+   ReadPara->Add( "CCSN_Max_Ang_Res",         &CCSN_Max_Ang_Res,         1.0,           0.0,              NoMax_double      );
    ReadPara->Add( "CCSN_CC_Red_DT",           &CCSN_CC_Red_DT,           1.0e-5,        Eps_double,       NoMax_double      );
-   ReadPara->Add( "CCSN_MaxRefine_RadFac",    &CCSN_MaxRefine_RadFac,    0.15,          0.0,              NoMax_double      );
    ReadPara->Add( "CCSN_NuHeat_TimeFac",      &CCSN_NuHeat_TimeFac,      0.1,           Eps_double,       1.0               );
    ReadPara->Add( "CCSN_CC_Rot",              &CCSN_CC_Rot,              2,             0,                2                 );
    ReadPara->Add( "CCSN_CC_Rot_R0",           &CCSN_CC_Rot_R0,           2.0e8,         Eps_double,       NoMax_double      );
@@ -317,7 +324,10 @@ void SetParameter()
       Aux_Message( stdout, "  sampling interval of GW signals                     = %13.7e\n", CCSN_GW_DT               );
       Aux_Message( stdout, "  mode for obtaining internal energy                  = %d\n",     CCSN_Eint_Mode           );
       if ( CCSN_Prob != Migration_Test ) {
-      Aux_Message( stdout, "  radial factor for maximum refine level              = %13.7e\n", CCSN_MaxRefine_RadFac    );
+      if ( CCSN_Min_Ang_Flag ) {
+      Aux_Message( stdout, "  minimum allowed angular resolution (in degree)      = %13.7e\n", CCSN_Min_Ang_Res         ); }
+      if ( CCSN_Max_Ang_Flag ) {
+      Aux_Message( stdout, "  maximum allowed angular resolution (in degree)      = %13.7e\n", CCSN_Max_Ang_Res         ); }
       Aux_Message( stdout, "  scaling factor for lightbulb/leakage dt             = %13.7e\n", CCSN_NuHeat_TimeFac      );
       Aux_Message( stdout, "  has core bounce occurred                            = %d\n",     CCSN_Is_PostBounce       );
       Aux_Message( stdout, "  pressure threshold factor for detecting shock       = %13.7e\n", CCSN_Shock_ThresFac_Pres );
