@@ -79,13 +79,23 @@ void Flu_CorrAfterAllSync()
          Aux_Message( stdout, "      restrict data at Lv %2d                ... ", lv );
 
 //    we do not restrict potential since it will be recalculated anyway
-      Flu_FixUp_Restrict( lv, amr->FluSg[lv+1], amr->FluSg[lv], amr->MagSg[lv+1], amr->MagSg[lv], NULL_INT, NULL_INT, _TOTAL, _MAG );
-
-#     ifdef LOAD_BALANCE
-      LB_GetBufferData( lv, amr->FluSg[lv], amr->MagSg[lv], NULL_INT, DATA_RESTRICT, _TOTAL, _MAG, NULL_INT );
+#     ifdef DEDT_NU
+#     ifdef DYEDT_NU
+      const long ResVar = _TOTAL - _DEDT_NU - _DYEDT_NU;
+#     else
+      const long ResVar = _TOTAL - _DEDT_NU;
+#     endif
+#     else
+      const long ResVar = _TOTAL;
 #     endif
 
-      Buf_GetBufferData( lv, amr->FluSg[lv], amr->MagSg[lv], NULL_INT, DATA_AFTER_FIXUP, _TOTAL, _MAG, Flu_ParaBuf, USELB_YES );
+      Flu_FixUp_Restrict( lv, amr->FluSg[lv+1], amr->FluSg[lv], amr->MagSg[lv+1], amr->MagSg[lv], NULL_INT, NULL_INT, ResVar, _MAG );
+
+#     ifdef LOAD_BALANCE
+      LB_GetBufferData( lv, amr->FluSg[lv], amr->MagSg[lv], NULL_INT, DATA_RESTRICT, ResVar, _MAG, NULL_INT );
+#     endif
+
+      Buf_GetBufferData( lv, amr->FluSg[lv], amr->MagSg[lv], NULL_INT, DATA_AFTER_FIXUP, ResVar, _MAG, Flu_ParaBuf, USELB_YES );
 
       if ( OPT__VERBOSE  &&  MPI_Rank == 0 )    Aux_Message( stdout, "done\n" );
    }
