@@ -1,5 +1,8 @@
 #include "GAMER.h"
 #include "TestProb.h"
+// #ifdef PARTICLE
+// #include "Particle.h"
+// #endif
 
 
 
@@ -73,6 +76,16 @@ static int        CCSN_Eint_Mode;                  // Mode of obtaining internal
 
        double     CCSN_Shock_ThresFac_Pres;        // pressure threshold factor for detecting postbounce shock
        double     CCSN_Shock_ThresFac_Vel;         // velocity threshold facotr for detecting postbounce shock
+
+# ifdef PARTICLE
+       int        CCSN_RSeed;                      // random seed for setting particle position
+       int        CCSN_NPar;                       // total number of particles
+       double     CCSN_Par_M_Min;                  // lower mass coordinate of particles (in solar mass)
+       double     CCSN_Par_M_Max;                  // upper mass coordinate of particles (in solar mass)
+static bool       ParTest_Use_Tracers;             // whether or not to include tracers
+static bool       ParTest_Use_Massive;             // whether or not to include massive particles
+static RandomNumber_t *RNG = NULL;
+# endif
 // =======================================================================================
 
 
@@ -88,6 +101,13 @@ double Mis_GetTimeStep_CoreCollapse( const int lv, const double dTime_dt );
 bool   Flag_Region_CCSN( const int i, const int j, const int k, const int lv, const int PID );
 bool   Flag_CoreCollapse( const int i, const int j, const int k, const int lv, const int PID, const double *Threshold );
 bool   Flag_Lightbulb( const int i, const int j, const int k, const int lv, const int PID, const double *Threshold );
+
+#ifdef PARTICLE
+void   Par_Init_ByFunction_CCSN( const long NPar_ThisRank, const long NPar_AllRank,
+                                 real *ParMass, real *ParPosX, real *ParPosY, real *ParPosZ,
+                                 real *ParVelX, real *ParVelY, real *ParVelZ, real *ParTime,
+                                 real *ParType, real *AllAttribute[PAR_NATT_TOTAL] );
+#endif
 
 
 
@@ -191,6 +211,14 @@ void SetParameter()
    ReadPara->Add( "CCSN_Is_PostBounce",       &CCSN_Is_PostBounce,       false,         Useless_bool,     Useless_bool      );
    ReadPara->Add( "CCSN_Shock_ThresFac_Pres", &CCSN_Shock_ThresFac_Pres, 0.5,           Eps_double,       NoMax_double      );
    ReadPara->Add( "CCSN_Shock_ThresFac_Vel" , &CCSN_Shock_ThresFac_Vel,  0.1,           Eps_double,       NoMax_double      );
+#  ifdef PARTICLE
+   ReadPara->Add( "CCSN_RSeed",               &CCSN_RSeed,               123,           0,                NoMax_int         );
+   ReadPara->Add( "CCSN_NPar",                &CCSN_NPar,                400,           2,                NoMax_int         );
+   ReadPara->Add( "CCSN_Par_M_Min",           &CCSN_Par_M_Min,           1.4,           Eps_double,       NoMax_double      );
+   ReadPara->Add( "CCSN_Par_M_Max",           &CCSN_Par_M_Max,           2.0,           Eps_double,       NoMax_double      );
+   ReadPara->Add( "ParTest_Use_Tracers",      &ParTest_Use_Tracers,      true,          Useless_bool,     Useless_bool      );
+   ReadPara->Add( "ParTest_Use_Massive",      &ParTest_Use_Massive,      false,         Useless_bool,     Useless_bool      );
+#  endif
 
    ReadPara->Read( FileName );
 
@@ -307,7 +335,24 @@ void SetParameter()
    }
 
 
-// (4) make a note
+// (4) check particle parameter and overwrite the total number of particles
+#  ifdef PARTICLE
+   if ( !ParTest_Use_Tracers  &&  !ParTest_Use_Massive )
+      Aux_Error( ERROR_INFO,
+                 "either ParTest_Use_Tracer, ParTest_Use_Massive, or both must be true !!\n" );
+
+#  ifndef TRACER
+   if ( ParTest_Use_Tracers )    Aux_Error( ERROR_INFO, "must enable TRACER for ParTest_Use_Tracers !!\n" );
+#  endif
+
+   amr->Par->NPar_Active_AllRank = 0;
+   if ( ParTest_Use_Massive )    amr->Par->NPar_Active_AllRank += 2;
+   if ( ParTest_Use_Tracers )    amr->Par->NPar_Active_AllRank += CCSN_NPar;
+   PRINT_WARNING( "PAR_NPAR", amr->Par->NPar_Active_AllRank, FORMAT_LONG );
+#  endif
+
+
+// (5) make a note
    if ( MPI_Rank == 0 )
    {
       Aux_Message( stdout, "=======================================================================================\n"  );
@@ -348,6 +393,13 @@ void SetParameter()
       if ( CCSN_CC_Rot == 2 )
       Aux_Message( stdout, "  multiplication factor for rotational profile        = %13.7e\n", CCSN_CC_Rot_Fac          );
       Aux_Message( stdout, "  reference distance for the maximum refinement level = %13.7e\n", CCSN_REF_RBase           );
+#     ifdef PARTICLE
+      Aux_Message( stdout, "  number of particles                                 = %ld\n",    CCSN_NPar                 );
+      Aux_Message( stdout, "  lower mass coordinate of particles (in solar mass)  = %13.7e\n", CCSN_Par_M_Min            );
+      Aux_Message( stdout, "  upper mass coordinate of particles (in solar mass)  = %13.7e\n", CCSN_Par_M_Max            );
+      Aux_Message( stdout, "  include tracer particles                            = %d\n",     ParTest_Use_Tracers       );
+      Aux_Message( stdout, "  include massive particles                           = %d\n",     ParTest_Use_Massive       );
+#     endif
       Aux_Message( stdout, "=======================================================================================\n"  );
    }
 
@@ -433,7 +485,7 @@ void SetGridIC( real fluid[], const double x, const double y, const double z, co
 
 // add angular momentum in a core collapse test, if any
    if ( CCSN_CC_Rot  &&  CCSN_Prob == Core_Collapse ) {
-      const double r_xy    = sqrt( SQR(x0) + SQR(y0) );
+      const double r_xy    = sqrt(  SQR( x0 ) + SQR( y0 )  );
       const double Cos_phi = x0/r_xy;
       const double Sin_phi = y0/r_xy;
             double Omega_r, Vel_phi;
@@ -443,7 +495,7 @@ void SetGridIC( real fluid[], const double x, const double y, const double z, co
       {
          const double R_0     = CCSN_CC_Rot_R0 / UNIT_L;
          const double Omega_0 = CCSN_CC_Rot_Omega0 * UNIT_T;
-                      Omega_r = Omega_0 * SQR(R_0) / ( SQR(r) + SQR(R_0) );
+                      Omega_r = Omega_0 * SQR( R_0 ) / (  SQR( r ) + SQR( R_0 )  );
       }
 
 //    rotational profile from the table
@@ -676,6 +728,206 @@ void SetBFieldIC_Suwa2007( real magnetic[], const double x, const double y, cons
 
 } // FUNCTION : SetBFieldIC_Suwa2007
 #endif // #ifdef MHD
+
+
+
+#ifdef PARTICLE
+//-------------------------------------------------------------------------------------------------------
+// Function    :  Par_Init_ByFunction_CCSN
+// Description :  particle initializer for CCSN problem
+//
+// Note        :  1. Invoked by Init_GAMER() using the function pointer "Par_Init_ByFunction_Ptr",
+//                   which must be set by a test problem initializer
+//                2. Periodicity should be taken care of in this function
+//                   --> No particles should lie outside the simulation box when the periodic BC is adopted
+//                   --> However, if the non-periodic BC is adopted, particles are allowed to lie outside the box
+//                       (more specifically, outside the "active" region defined by amr->Par->RemoveCell)
+//                       in this function. They will later be removed automatically when calling Par_Aux_InitCheck()
+//                       in Init_GAMER().
+//                3. Particles set by this function are only temporarily stored in this MPI rank
+//                   --> They will later be redistributed when calling Par_FindHomePatch_UniformGrid()
+//                       and LB_Init_LoadBalance()
+//                   --> Therefore, there is no constraint on which particles should be set by this function
+//
+// Parameter   :  NPar_ThisRank : Number of particles to be set by this MPI rank
+//                NPar_AllRank  : Total Number of particles in all MPI ranks
+//                ParMass       : Particle mass     array with the size of NPar_ThisRank
+//                ParPosX/Y/Z   : Particle position array with the size of NPar_ThisRank
+//                ParVelX/Y/Z   : Particle velocity array with the size of NPar_ThisRank
+//                ParTime       : Particle time     array with the size of NPar_ThisRank
+//                ParType       : Particle type     array with the size of NPar_ThisRank
+//                AllAttribute  : Pointer array for all particle attributes
+//                                --> Dimension = [PAR_NATT_TOTAL][NPar_ThisRank]
+//                                --> Use the attribute indices defined in Field.h (e.g., Idx_ParCreTime)
+//                                    to access the data
+//
+// Return      :  ParMass, ParPosX/Y/Z, ParVelX/Y/Z, ParTime, ParType, AllAttribute
+//-------------------------------------------------------------------------------------------------------
+void Par_Init_ByFunction_CCSN( const long NPar_ThisRank, const long NPar_AllRank,
+                               real *ParMass, real *ParPosX, real *ParPosY, real *ParPosZ,
+                               real *ParVelX, real *ParVelY, real *ParVelZ, real *ParTime,
+                               real *ParType, real *AllAttribute[PAR_NATT_TOTAL] )
+{
+
+   if ( MPI_Rank == 0 )    Aux_Message( stdout, "%s ...\n", __FUNCTION__ );
+
+
+   long NPar_All = 0;
+   if ( ParTest_Use_Massive ) NPar_All += 2;
+   if ( ParTest_Use_Tracers ) NPar_All += CCSN_NPar;
+
+   if ( NPar_All != NPar_AllRank )
+      Aux_Error( ERROR_INFO, "total number of particles found [%ld] != expect [%ld] !!\n",
+                 NPar_All, NPar_AllRank );
+
+
+// define the particle attribute arrays
+   real *ParData_AllRank[PAR_NATT_TOTAL];
+   for (int v=0; v<PAR_NATT_TOTAL; v++)   ParData_AllRank[v] = NULL;
+
+
+// only the master rank will construct the initial condition
+   if ( MPI_Rank == 0 ) {
+
+//    set variables
+      const double BoxCenter[3] = { amr->BoxCenter[0], amr->BoxCenter[1], amr->BoxCenter[2] };
+            double Rad[NPar_All] = { NULL_REAL }, dM_dR[NPar_All] = { NULL_REAL };
+            double dM_dR_sum = 0.0;
+            double dM_dR_norm[NPar_All] = { NULL_REAL };
+            int    random_indices[NPar_All];
+            double Rand_Rad[NPar_All];
+
+//    initialize the random number generator
+      RNG = new RandomNumber_t( 1 );
+      RNG->SetSeed( 0, CCSN_RSeed );
+
+//    allocate memory for particle attribute arrays
+      ParData_AllRank[PAR_MASS] = new real [NPar_AllRank];
+      ParData_AllRank[PAR_POSX] = new real [NPar_AllRank];
+      ParData_AllRank[PAR_POSY] = new real [NPar_AllRank];
+      ParData_AllRank[PAR_POSZ] = new real [NPar_AllRank];
+      ParData_AllRank[PAR_VELX] = new real [NPar_AllRank];
+      ParData_AllRank[PAR_VELY] = new real [NPar_AllRank];
+      ParData_AllRank[PAR_VELZ] = new real [NPar_AllRank];
+      ParData_AllRank[PAR_TYPE] = new real [NPar_AllRank];
+
+
+//    set radius, density, and mass coordinate
+      const double *Table_R    = CCSN_Prof + CCSN_ColIdx_R   *CCSN_Prof_NBin;
+      const double *Table_Dens = CCSN_Prof + CCSN_ColIdx_Dens*CCSN_Prof_NBin;
+      const double *Table_Velr = CCSN_Prof + CCSN_ColIdx_Velr*CCSN_Prof_NBin;
+            double  Mass_Coord[CCSN_Prof_NBin];
+
+      Mass_Coord[0] = 4.0 / 3.0 * M_PI * Table_Dens[0] * CUBE( Table_R[0] );
+      for (int i=1; i<CCSN_Prof_NBin; i++) {
+         const double dR = Table_R[i] - Table_R[i-1];
+         Mass_Coord[i] = Mass_Coord[i-1]
+                       + (  4.0 * M_PI * Table_Dens [i] * SQR( Table_R[i] ) * dR  );
+      }
+
+
+//    find lower, upper radii corresponding to the mass coordinate CCSN_Par_M_Min, and CCSN_Par_M_Max
+      const double M_Min_Code = CCSN_Par_M_Min*Const_Msun / UNIT_M;
+      const double M_Max_Code = CCSN_Par_M_Max*Const_Msun / UNIT_M;
+      const double Par_R_Min  = Mis_InterpolateFromTable( CCSN_Prof_NBin, Mass_Coord,
+                                                          CCSN_Prof+CCSN_ColIdx_R*CCSN_Prof_NBin, M_Min_Code );
+      const double Par_R_Max  = Mis_InterpolateFromTable( CCSN_Prof_NBin, Mass_Coord,
+                                                          CCSN_Prof+CCSN_ColIdx_R*CCSN_Prof_NBin, M_Max_Code );
+      const double dR = ( Par_R_Max - Par_R_Min ) / ( NPar_All - 1 );
+
+
+//    find probability function according to the density profile
+      for (int i=0; i<NPar_All; i++) {
+         Rad[i] = Par_R_Min + i*dR;
+         for (int j=1; j<CCSN_Prof_NBin; j++) {
+            if (Rad[i] <= Table_R[j]) {
+//             calculate dM/dR = 4*pi*R^2*rho
+               const double Dens     = Mis_InterpolateFromTable( CCSN_Prof_NBin, Table_R, Table_Dens, Rad[i] );
+                            dM_dR[i] = 4.0 * M_PI * SQR( Rad[i] ) * Dens;
+               break;
+            }
+         }
+      }
+
+      for (int i=0; i<NPar_All; i++)
+         dM_dR_sum += dM_dR[i];
+
+      for (int i=0; i<NPar_All; i++)
+         dM_dR_norm[i] = dM_dR[i] / dM_dR_sum;
+
+
+//    generate random numbers based on the density profile
+      for (int i=0; i<NPar_All; i++) {
+         double rand_val = RNG->GetValue( 0, 0.0, 1.0 );  // Generate a random value between 0 and 1
+         double cumulative_prob = 0.0;
+         for (int j=0; j<NPar_All; j++) {
+            cumulative_prob += dM_dR_norm[j];
+            if (rand_val <= cumulative_prob) {
+               random_indices[i] = j;
+               break;
+            }
+         }
+      }
+
+      for (long i=0; i<NPar_All; i++)
+        Rand_Rad[i] = Par_R_Min + random_indices[i] * ( Par_R_Max - Par_R_Min ) / NPar_All;
+
+      for (long p=0; p<NPar_All; p++) {
+
+         double theta = acos( 1.0 - 2.0 * RNG->GetValue( 0, 0.0, 1.0 ) );
+         double phi   = RNG->GetValue( 0, 0.0, 1.0 ) * 2.0 * M_PI;
+
+         const double r0    = Rand_Rad[p];
+         const double x0    = r0 * sin(theta) * cos(phi);
+         const double y0    = r0 * sin(theta) * sin(phi);
+         const double z0    = r0 * cos(theta);
+
+         printf("x0 = %10.8E\n", x0);
+         printf("y0 = %10.8E\n", y0);
+         printf("z0 = %10.8E\n", z0);
+         printf("r  = %10.8E\n", r0);
+         printf("Rand_Rad[%4d] = %10.8E\n", p, Rand_Rad[p]);
+
+         // const double Velr  = Mis_InterpolateFromTable( CCSN_Prof_NBin, Table_R, Table_Velr, r0 );
+
+         ParData_AllRank[PAR_MASS][p] = 0.0; // ( M_Max_Code - M_Min_Code ) / NPar_All;
+
+         ParData_AllRank[PAR_POSX][p] = x0 + BoxCenter[0];
+         ParData_AllRank[PAR_POSY][p] = y0 + BoxCenter[1];
+         ParData_AllRank[PAR_POSZ][p] = z0 + BoxCenter[2];
+
+         ParData_AllRank[PAR_VELX][p] = 0.0; //Velr * sin(theta) * cos(phi);
+         ParData_AllRank[PAR_VELY][p] = 0.0; //Velr * sin(theta) * sin(phi);
+         ParData_AllRank[PAR_VELZ][p] = 0.0; //Velr * cos(theta);
+
+         ParData_AllRank[PAR_TYPE][p] = PTYPE_TRACER;
+         // ParData_AllRank[PAR_TYPE][p] = PTYPE_GENERIC_MASSIVE;
+      }
+   } // if ( MPI_Rank == 0 )
+
+
+// send particle attributes from the master rank to all ranks
+   Par_ScatterParticleData( NPar_ThisRank, NPar_AllRank,
+                            _PAR_MASS|_PAR_POS|_PAR_VEL|_PAR_TYPE,
+                            ParData_AllRank, AllAttribute );
+
+
+// synchronize all particles to the physical time on the base level
+   for (long p=0; p<NPar_ThisRank; p++) {
+      ParTime[p] = Time[0];
+      // ParType[p] = PTYPE_GENERIC_MASSIVE;
+   }
+
+
+// free resource
+   if ( MPI_Rank == 0 )
+      for (int v=0; v<PAR_NATT_TOTAL; v++)   delete [] ParData_AllRank[v];
+
+
+   if ( MPI_Rank == 0 )    Aux_Message( stdout, "%s ... done\n", __FUNCTION__ );
+
+} // FUNCTION : Par_Init_ByFunction_CCSN
+#endif // #ifdef PARTICLE
 
 
 
@@ -980,6 +1232,9 @@ void Init_TestProb_Hydro_CCSN()
    Mis_GetTimeStep_User_Ptr = Mis_GetTimeStep_CCSN;
 #  if ( EOS == EOS_NUCLEAR  &&  NUC_TABLE_MODE == NUC_TABLE_MODE_TEMP )
    Flu_ResetByUser_Func_Ptr = Flu_ResetByUser_CCSN;
+#  endif
+#  ifdef PARTICLE
+   Par_Init_ByFunction_Ptr  = Par_Init_ByFunction_CCSN;
 #  endif
 
    if ( CCSN_Prob != 0 )
