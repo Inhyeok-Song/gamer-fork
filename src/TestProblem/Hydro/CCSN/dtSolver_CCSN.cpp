@@ -232,9 +232,9 @@ double Mis_GetTimeStep_Leakage( const int lv, const double dTime_dt )
 
             switch ( CCSN_DT_YE )
             {
-               case 1 : dYe       = FMIN(  FABS( YeMax - Ye ), FABS( Ye - YeMin )  );
-               case 2 : dYe       = Ye;
-               case 3 : dYe       = __FLT_MAX__;
+               case 1 : dYe       = FMIN(  FABS( YeMax - Ye ), FABS( Ye - YeMin )  );   break;
+               case 2 : dYe       = Ye;                                                 break;
+               case 3 : dYe       = __FLT_MAX__;                                        break;
             }
 #           else
             const real dEint_Code = NULL_REAL;
