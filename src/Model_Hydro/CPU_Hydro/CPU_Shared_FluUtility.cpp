@@ -885,10 +885,20 @@ bool Hydro_IsUnphysical( const IsUnphyMode_t Mode, const real Fields[],
 //          check passive scalars (which can be zero)
             else
             {
-               if ( Fields[v] < (real)0.0  &&  PassiveFloor & BIDX(v) )
-                  UnphyCell = true;
-               if ( Fields[v] < -HUGE_NUMBER  ||  Fields[v] > HUGE_NUMBER )
-                  UnphyCell = true;
+//             temporarily disable heating rate checks to prevent runtime errors
+//             when restarting from a snapshot generated with OPT__OUTPUT_LEAKAGE=1
+#              ifdef DEDT_NU
+               if ( v != DEDT_NU  )
+#              ifdef DYEDT_NU
+               if ( v != DYEDT_NU )
+#              endif
+#              endif
+               {
+                  if ( Fields[v] < (real)0.0  &&  PassiveFloor & BIDX(v) )
+                     UnphyCell = true;
+                  if ( Fields[v] < -HUGE_NUMBER  ||  Fields[v] > HUGE_NUMBER )
+                     UnphyCell = true;
+               }
             }
          } // for (int v=0; v<NCOMP_TOTAL; v++)
 
@@ -1002,10 +1012,20 @@ bool Hydro_IsUnphysical( const IsUnphyMode_t Mode, const real Fields[],
 //          check passive scalars (which can be zero)
             else
             {
-               if ( Fields[v] < (real)0.0  &&  PassiveFloor & BIDX(v) )
-                  UnphyCell = true;
-               if ( Fields[v] < -HUGE_NUMBER  ||  Fields[v] > HUGE_NUMBER )
-                  UnphyCell = true;
+//             temporarily disable heating rate checks to prevent runtime errors
+//             when restarting from a snapshot generated with OPT__OUTPUT_LEAKAGE=1
+#              ifdef DEDT_NU
+               if ( v != DEDT_NU  )
+#              ifdef DYEDT_NU
+               if ( v != DYEDT_NU )
+#              endif
+#              endif
+               {
+                  if ( Fields[v] < (real)0.0  &&  PassiveFloor & BIDX(v) )
+                     UnphyCell = true;
+                  if ( Fields[v] < -HUGE_NUMBER  ||  Fields[v] > HUGE_NUMBER )
+                     UnphyCell = true;
+               }
             }
          } // for (int v=0; v<NCOMP_TOTAL; v++)
 
@@ -1046,13 +1066,23 @@ bool Hydro_IsUnphysical( const IsUnphyMode_t Mode, const real Fields[],
             if ( Fields[v] != Fields[v] )
                UnphyCell = true;
 
-//          check negative (passive scalars can be zero)
-            if ( Fields[v] < (real)0.0  &&  PassiveFloor & BIDX(v+NCOMP_FLUID) )
-               UnphyCell = true;
+//          --> temporarily disable heating rate checks to prevent runtime errors
+//              when restarting from a snapshot generated with OPT__OUTPUT_LEAKAGE=1
+#           ifdef DEDT_NU
+            if ( v != DEDT_NU  - NCOMP_FLUID )
+#           ifdef DYEDT_NU
+            if ( v != DYEDT_NU - NCOMP_FLUID )
+#           endif
+#           endif
+            {
+//             check negative (passive scalars can be zero)
+               if ( Fields[v] < (real)0.0  &&  PassiveFloor & BIDX(v+NCOMP_FLUID) )
+                  UnphyCell = true;
 
-//          check infinity
-            if ( Fields[v] < -HUGE_NUMBER  ||  Fields[v] > HUGE_NUMBER )
-               UnphyCell = true;
+//             check infinity
+               if ( Fields[v] < -HUGE_NUMBER  ||  Fields[v] > HUGE_NUMBER )
+                  UnphyCell = true;
+            }
          }
 
 //       print out the unphysical values
