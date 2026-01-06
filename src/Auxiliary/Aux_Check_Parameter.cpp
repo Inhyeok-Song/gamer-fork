@@ -898,6 +898,10 @@ void Aux_Check_Parameter()
 #     elif ( NUC_TABLE_MODE == NUC_TABLE_MODE_TEMP )
       if ( !OPT__RESET_FLUID )
          Aux_Error( ERROR_INFO, "ERROR : must enable OPT__RESET_FLUID for nucelar EoS table type NUC_TABLE_MODE_TEMP !!\n" );
+#     elif ( NUC_TABLE_MODE == NUC_TABLE_MODE_ENGY)
+#        ifdef HELMHOLTZ_EOS
+#           error : ERROR : Helmholtz EoS solver does not support NUC_TABLE_MODE_ENGY !!
+#        endif
 #     endif
 #     if ( !defined NUC_EOS_SOLVER )
 #        error : ERROR : must enable NUC_EOS_SOLVER for EOS_NUCLEAR !!

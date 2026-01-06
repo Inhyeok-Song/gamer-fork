@@ -330,6 +330,9 @@ EoS_t EoS;
 char NUC_TABLE[MAX_STRING];
 Nuc_IntScheme_t NUC_INT_SCHEME_AUX;
 Nuc_IntScheme_t NUC_INT_SCHEME_MAIN;
+#ifdef HELMHOLTZ_EOS
+char HELM_TABLE[MAX_STRING];
+#endif
 #endif
 #endif // HYDRO
 
@@ -467,7 +470,7 @@ real (*h_Mag_Array_T[2])[NCOMP_MAG][ PS1P1*SQR(PS1) ]              = { NULL, NUL
 
 // (3-6) EoS tables
 #if ( MODEL == HYDRO )
-real *h_EoS_Table[EOS_NTABLE_MAX];
+void *h_EoS_Table[EOS_NTABLE_MAX];
 #endif
 
 // (3-7) source terms
@@ -554,7 +557,7 @@ real (*d_Mag_Array_T)[NCOMP_MAG][ PS1P1*SQR(PS1) ]                 = NULL;
 
 // (4-6) EoS tables
 #if ( MODEL == HYDRO )
-real *d_EoS_Table[EOS_NTABLE_MAX];
+void *d_EoS_Table[EOS_NTABLE_MAX];
 #endif
 
 // (4-7) source terms

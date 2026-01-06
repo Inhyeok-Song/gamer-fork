@@ -557,6 +557,13 @@ def load_arguments( sys_setting : SystemSetting ):
                          help="Nuclear EoS solver. NUC_EOS_SOLVER_LUT only supports <--nuc_table=NUC_TABLE_MODE_ENGY>.\n"
                        )
 
+    parser.add_argument( "--helmholtz_eos",  type=str2bool, metavar="BOOLEAN", gamer_name="HELMHOLTZ_EOS",
+                         default=False,
+                         depend={"model":"HYDRO"},
+                         constraint={ True:{"eos":["NUCLEAR"], "nuc_table":["TEMP"], "nuc_solver":["ORIG"]} },
+                         help="Hybrid equation of state (Nuclear + Helmholtz).\n"
+                       )
+
     parser.add_argument( "--neutrino", type=str, metavar="TYPE", gamer_name="NEUTRINO_SCHEME",
                          default="LIGHTBULB", choices=[NONE_STR, "LIGHTBULB", "IDSA", "M1"],
                          depend={"model":"HYDRO", "eos":"NUCLEAR"},

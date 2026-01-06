@@ -20,16 +20,16 @@ def convert_KEPLER(file):
     line_header = file.readline()
     headers = [word.strip() for word in line_header.strip().split("  ") if word]
 
-    # find and read targeting variables (radius, density, temperature, radial velocity,
-    #                                    electron fraction, pressure, and angular velocity)
-    nvars = 7
-    keys = ["cell outer radius", "cell density", "cell temperature", "cell outer velocity",
-            "cell Y_e", "cell pressure", "cell angular velocity"]
+    # find and read targeting variables (radius, density, temperature, radial velocity, electron fraction,
+    #                                    pressure, energy, entropy, angular velocity, Abar)
+    nvars = 10
+    keys = ["cell outer radius", "cell density", "cell temperature", "cell outer velocity", "cell Y_e",
+            "cell pressure", "cell specific energy", "cell specific entropy", "cell angular velocity", "cell A_bar"]
     TargetCols = [headers.index(key) for key in keys]
 
     # GAMER-formatted array
-    GAMER_DATA_FORM = np.empty((0, nvars), dtype=np.float)
-    variables       = np.empty(nvars,      dtype=np.float)
+    GAMER_DATA_FORM = np.empty((0, nvars), dtype=np.float64)
+    variables       = np.empty(nvars,      dtype=np.float64)
 
     outer_radius = 0.0
     outer_vel    = 0.0
@@ -51,6 +51,8 @@ def convert_KEPLER(file):
     # add a safer line for the innermost radius
     GAMER_DATA_FORM = np.vstack([GAMER_DATA_FORM[0], GAMER_DATA_FORM])
     GAMER_DATA_FORM[0, 0] = 1.0
+    GAMER_DATA_FORM[0, 3] = 0.0
+
 
     return f_info, GAMER_DATA_FORM
 
@@ -66,11 +68,11 @@ def convert_MESA(file):
         f.readline()
     headers = f.readline().split()
 
-    # find and read targeting variables (radius, density, temperature, radial velocity,
-    #                                    electron fraction, pressure, and angular velocity)
-    nvars = 7
+    # find and read targeting variables (radius, density, temperature, radial velocity, electron fraction,
+    #                                    pressure, energy, entropy, angular velocity, Abar)
+    nvars = 10
     keys = ["logR", "density", "temperature", "velocity",
-            "ye", "pressure", "omega"]
+            "ye", "energy", "entropy", "pressure", "omega", "Abar"]
     TargetCols = [headers.index(key) for key in keys]
 
     # GAMER-formatted array
@@ -94,6 +96,7 @@ def convert_MESA(file):
     # add a safer line for the innermost radius
     GAMER_DATA_FORM = np.vstack([GAMER_DATA_FORM[0], GAMER_DATA_FORM])
     GAMER_DATA_FORM[0, 0] = 1.0
+    GAMER_DATA_FORM[0, 3] = 0.0
 
     return f_info, GAMER_DATA_FORM
 
@@ -146,9 +149,9 @@ if __name__ == "__main__":
     GAMER_DATA_FORM = GAMER_DATA_FORM[0:num_line, :]
 
     # write GAMER-formatted header
-    fmt = "{:>21s}" + "{:>25s}" * 6
-    header_GAMER  = fmt.format("radius", "density",  "temperature", "radial velocity", "ye",  "pressure", "omega"  ) + "\n"
-    header_GAMER += fmt.format("[cm]",   "[g/cm^3]", "[K]",         "[cm/s]",          "[1]", "[bar]",    "[rad/s]")
+    fmt = "{:>21s}" + "{:>25s}" * 9
+    header_GAMER  = fmt.format("radius", "density",  "temperature", "radial velocity", "ye",  "pressure", "energy",     "entropy",     "omega",   "Abar") + "\n"
+    header_GAMER += fmt.format("[cm]",   "[g/cm^3]", "[K]",         "[cm/s]",          "[1]", "[bar]",    "[cm^2/s^2]", "[kb/baryon]", "[rad/s]", "[1]" )
     header_GAMER = f_info + header_GAMER
 
     # write data to the text file

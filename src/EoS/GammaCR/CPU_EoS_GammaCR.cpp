@@ -11,11 +11,11 @@
 #ifdef __CUDACC__
 __device__ static real EoS_CREint2CRPres_GammaCR( const real E_CR,
                                                   const double AuxArray_Flt[], const int AuxArray_Int[],
-                                                  const real *const Table[EOS_NTABLE_MAX] );
+                                                  const void *const Table[EOS_NTABLE_MAX] );
 #else // #ifdef __CUDACC__
 static real EoS_CREint2CRPres_GammaCR( const real E_CR,
                                        const double AuxArray_Flt[], const int AuxArray_Int[],
-                                       const real *const Table[EOS_NTABLE_MAX] );
+                                       const void *const Table[EOS_NTABLE_MAX] );
 #endif // #ifdef __CUDACC__ ... else ...
 
 
@@ -121,7 +121,7 @@ void EoS_SetAuxArray_GammaCR( double AuxArray_Flt[], int AuxArray_Int[] )
 GPU_DEVICE_NOINLINE
 static real EoS_DensEint2Pres_GammaCR( const real Dens, const real Eint, const real Passive[],
                                        const double AuxArray_Flt[], const int AuxArray_Int[],
-                                       const real *const Table[EOS_NTABLE_MAX])
+                                       const void *const Table[EOS_NTABLE_MAX])
 {
 
 // check
@@ -164,7 +164,7 @@ static real EoS_DensEint2Pres_GammaCR( const real Dens, const real Eint, const r
 GPU_DEVICE_NOINLINE
 static real EoS_DensPres2Eint_GammaCR( const real Dens, const real Pres, const real Passive[],
                                        const double AuxArray_Flt[], const int AuxArray_Int[],
-                                       const real *const Table[EOS_NTABLE_MAX] )
+                                       const void *const Table[EOS_NTABLE_MAX] )
 {
 
 // check
@@ -207,7 +207,7 @@ static real EoS_DensPres2Eint_GammaCR( const real Dens, const real Pres, const r
 GPU_DEVICE_NOINLINE
 static real EoS_DensPres2CSqr_GammaCR( const real Dens, const real Pres, const real Passive[],
                                        const double AuxArray_Flt[], const int AuxArray_Int[],
-                                       const real *const Table[EOS_NTABLE_MAX] )
+                                       const void *const Table[EOS_NTABLE_MAX] )
 {
 
 // check
@@ -253,7 +253,7 @@ static real EoS_DensPres2CSqr_GammaCR( const real Dens, const real Pres, const r
 GPU_DEVICE_NOINLINE
 static real EoS_DensEint2Temp_GammaCR( const real Dens, const real Eint, const real Passive[],
                                        const double AuxArray_Flt[], const int AuxArray_Int[],
-                                       const real *const Table[EOS_NTABLE_MAX] )
+                                       const void *const Table[EOS_NTABLE_MAX] )
 {
 
 // check
@@ -296,7 +296,7 @@ static real EoS_DensEint2Temp_GammaCR( const real Dens, const real Eint, const r
 GPU_DEVICE_NOINLINE
 static real EoS_DensTemp2Pres_GammaCR( const real Dens, const real Temp, const real Passive[],
                                        const double AuxArray_Flt[], const int AuxArray_Int[],
-                                       const real *const Table[EOS_NTABLE_MAX] )
+                                       const void *const Table[EOS_NTABLE_MAX] )
 {
 
 // check
@@ -339,7 +339,7 @@ static real EoS_DensTemp2Pres_GammaCR( const real Dens, const real Temp, const r
 GPU_DEVICE_NOINLINE
 static real EoS_DensEint2Entr_GammaCR( const real Dens, const real Eint, const real Passive[],
                                        const double AuxArray_Flt[], const int AuxArray_Int[],
-                                       const real *const Table[EOS_NTABLE_MAX] )
+                                       const void *const Table[EOS_NTABLE_MAX] )
 {
 
 // check
@@ -384,7 +384,7 @@ static real EoS_DensEint2Entr_GammaCR( const real Dens, const real Eint, const r
 GPU_DEVICE_NOINLINE
 static void EoS_General_GammaCR( const int Mode, real Out[], const real In_Flt[], const int In_Int[],
                                  const double AuxArray_Flt[], const int AuxArray_Int[],
-                                 const real *const Table[EOS_NTABLE_MAX] )
+                                 const void *const Table[EOS_NTABLE_MAX] )
 {
 
 // not used by this EoS
@@ -408,7 +408,7 @@ static void EoS_General_GammaCR( const int Mode, real Out[], const real In_Flt[]
 GPU_DEVICE_NOINLINE
 static real EoS_CREint2CRPres_GammaCR( const real E_CR,
                                        const double AuxArray_Flt[], const int AuxArray_Int[],
-                                       const real *const Table[EOS_NTABLE_MAX] )
+                                       const void *const Table[EOS_NTABLE_MAX] )
 {
 
 // check

@@ -132,8 +132,8 @@ CPU_FILE    += CPU_FluidSolver_RTVD.cpp  CPU_FluidSolver_MHM.cpp  CPU_FluidSolve
                CPU_Shared_RiemannSolver_HLLE.cpp  CPU_Shared_RiemannSolver_HLLC.cpp  CPU_Shared_DualEnergy.cpp \
                CPU_dtSolver_HydroCFL.cpp  CPU_EoS_Gamma.cpp  CPU_EoS_User_Template.cpp  CPU_EoS_Isothermal.cpp \
                CPU_EoS_GammaCR.cpp  CPU_EoS_TaubMathews.cpp  CPU_EoS_Nuclear.cpp \
-               EoS_End_Nuclear.cpp  NuclearEoS.cpp  cubinterp_some.cpp  linterp_some.cpp \
-               findtoreps.cpp  findtemp_NR_bisection.cpp  readtable.cpp  findtoreps_direct.cpp
+               EoS_End_Nuclear.cpp  NuclearEoS.cpp  HelmholtzEoS.cpp  cubinterp_some.cpp  linterp_some.cpp \
+               findtoreps.cpp  findtemp_NR_bisection.cpp  readtable.cpp  readtable_Helm.cpp  findtoreps_direct.cpp
 
 CPU_FILE    += Hydro_Init_ByFunction_AssignData.cpp  Hydro_Aux_Check_Negative.cpp \
                Hydro_BoundaryCondition_Reflecting.cpp  Hydro_BoundaryCondition_Outflow.cpp \

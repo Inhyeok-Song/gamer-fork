@@ -49,8 +49,20 @@ struct EoS_t
 #  endif
 
 // table pointers
-   real **Table;
+   void **Table;
+
+#  if ( EOS == EOS_NUCLEAR )
+#  ifdef HELMHOLTZ_EOS
+   char   Helm_IC_File[MAX_STRING];
+   int    Helm_Imax;
+   int    Helm_Jmax;
+   double Helm_Dens_Trans;
+   double Helm_Dens_Stop;
+   double Helm_Decrease;
 #  endif
+#  endif
+
+#  endif // if ( MODEL == HYDRO )
 
 }; // struct EoS_t
 

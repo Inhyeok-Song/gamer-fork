@@ -94,7 +94,7 @@ void EoS_SetAuxArray_User_Template( double AuxArray_Flt[], int AuxArray_Int[] )
 GPU_DEVICE_NOINLINE
 static real EoS_DensEint2Pres_User_Template( const real Dens, const real Eint, const real Passive[],
                                              const double AuxArray_Flt[], const int AuxArray_Int[],
-                                             const real *const Table[EOS_NTABLE_MAX] )
+                                             const void *const Table[EOS_NTABLE_MAX] )
 {
 
 // check
@@ -155,7 +155,7 @@ static real EoS_DensEint2Pres_User_Template( const real Dens, const real Eint, c
 GPU_DEVICE_NOINLINE
 static real EoS_DensPres2Eint_User_Template( const real Dens, const real Pres, const real Passive[],
                                              const double AuxArray_Flt[], const int AuxArray_Int[],
-                                             const real *const Table[EOS_NTABLE_MAX] )
+                                             const void *const Table[EOS_NTABLE_MAX] )
 {
 
 // check
@@ -216,7 +216,7 @@ static real EoS_DensPres2Eint_User_Template( const real Dens, const real Pres, c
 GPU_DEVICE_NOINLINE
 static real EoS_DensPres2CSqr_User_Template( const real Dens, const real Pres, const real Passive[],
                                              const double AuxArray_Flt[], const int AuxArray_Int[],
-                                             const real *const Table[EOS_NTABLE_MAX] )
+                                             const void *const Table[EOS_NTABLE_MAX] )
 {
 
 // check
@@ -278,7 +278,7 @@ static real EoS_DensPres2CSqr_User_Template( const real Dens, const real Pres, c
 GPU_DEVICE_NOINLINE
 static real EoS_DensEint2Temp_User_Template( const real Dens, const real Eint, const real Passive[],
                                              const double AuxArray_Flt[], const int AuxArray_Int[],
-                                             const real *const Table[EOS_NTABLE_MAX] )
+                                             const void *const Table[EOS_NTABLE_MAX] )
 {
 
 // check
@@ -336,7 +336,7 @@ static real EoS_DensEint2Temp_User_Template( const real Dens, const real Eint, c
 GPU_DEVICE_NOINLINE
 static real EoS_DensTemp2Pres_User_Template( const real Dens, const real Temp, const real Passive[],
                                              const double AuxArray_Flt[], const int AuxArray_Int[],
-                                             const real *const Table[EOS_NTABLE_MAX] )
+                                             const void *const Table[EOS_NTABLE_MAX] )
 {
 
 // check
@@ -392,7 +392,7 @@ static real EoS_DensTemp2Pres_User_Template( const real Dens, const real Temp, c
 GPU_DEVICE_NOINLINE
 static real EoS_DensEint2Entr_User_Template( const real Dens, const real Eint, const real Passive[],
                                              const double AuxArray_Flt[], const int AuxArray_Int[],
-                                             const real *const Table[EOS_NTABLE_MAX] )
+                                             const void *const Table[EOS_NTABLE_MAX] )
 {
 
 // check
@@ -450,7 +450,7 @@ static real EoS_DensEint2Entr_User_Template( const real Dens, const real Eint, c
 GPU_DEVICE_NOINLINE
 static void EoS_General_User_Template( const int Mode, real Out[], const real In_Flt[], const int In_Int[],
                                        const double AuxArray_Flt[], const int AuxArray_Int[],
-                                       const real *const Table[EOS_NTABLE_MAX] )
+                                       const void *const Table[EOS_NTABLE_MAX] )
 {
 
 // check

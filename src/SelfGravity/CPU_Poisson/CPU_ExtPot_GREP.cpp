@@ -26,6 +26,8 @@ extern Profile_t *GREP_DensAve [NLEVEL+1][2];
 extern Profile_t *GREP_EngyAve [NLEVEL+1][2];
 extern Profile_t *GREP_VrAve   [NLEVEL+1][2];
 extern Profile_t *GREP_PresAve [NLEVEL+1][2];
+extern Profile_t *GREP_TempAve [NLEVEL+1][2];
+extern Profile_t *GREP_YeAve   [NLEVEL+1][2];
 extern Profile_t *GREP_EffPot  [NLEVEL  ][2];
 
        void Init_GREP_MemAllocate();
@@ -87,6 +89,8 @@ void Init_GREP()
       GREP_EngyAve [lv][Sg] = new Profile_t();
       GREP_VrAve   [lv][Sg] = new Profile_t();
       GREP_PresAve [lv][Sg] = new Profile_t();
+      GREP_TempAve [lv][Sg] = new Profile_t();
+      GREP_YeAve   [lv][Sg] = new Profile_t();
 
       if ( lv < NLEVEL )
       GREP_EffPot  [lv][Sg] = new Profile_t();
@@ -385,6 +389,8 @@ void End_ExtPot_GREP()
       GREP_EngyAve [lv][Sg]->FreeMemory();
       GREP_VrAve   [lv][Sg]->FreeMemory();
       GREP_PresAve [lv][Sg]->FreeMemory();
+      GREP_TempAve [lv][Sg]->FreeMemory();
+      GREP_YeAve   [lv][Sg]->FreeMemory();
 
       if ( lv < NLEVEL )
       GREP_EffPot  [lv][Sg]->FreeMemory();

@@ -171,7 +171,7 @@ void nuc_eos_C_short( real *Out, const real *In,
    {
       case NUC_MODE_ENGY :
       {
-         const real leps = LOG10( In[1] + energy_shift );
+         const real leps = LOG10( In[1] );
 
 #        if ( NUC_TABLE_MODE == NUC_TABLE_MODE_TEMP )
          const int   npt_chk   = nmode_Aux;
@@ -307,7 +307,7 @@ void nuc_eos_C_short( real *Out, const real *In,
          if ( TargetIdx[i] == NUC_VAR_IDX_PRES )   Out[i] = POW( (real)10.0, Out[i] );
 
 #        if ( NUC_TABLE_MODE == NUC_TABLE_MODE_TEMP )
-         if ( TargetIdx[i] == NUC_VAR_IDX_EORT )   Out[i] = POW( (real)10.0, Out[i] ) - energy_shift;
+         if ( TargetIdx[i] == NUC_VAR_IDX_EORT )   Out[i] = POW( (real)10.0, Out[i] );
 #        else
          if ( TargetIdx[i] == NUC_VAR_IDX_EORT )   Out[i] = POW( (real)10.0, Out[i] );
 #        endif
@@ -320,7 +320,7 @@ void nuc_eos_C_short( real *Out, const real *In,
 #  if ( NUC_TABLE_MODE == NUC_TABLE_MODE_TEMP )
    Out[NTarget] = POW( (real)10.0, ltoreps );
 #  else
-   Out[NTarget] = POW( (real)10.0, ltoreps ) - energy_shift;
+   Out[NTarget] = POW( (real)10.0, ltoreps );
 #  endif
 
 } // FUNCTION : nuc_eos_C_short

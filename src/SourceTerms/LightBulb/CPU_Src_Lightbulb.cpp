@@ -215,7 +215,9 @@ static void Src_Lightbulb( real fluid[], const real B[],
 #  ifdef DEDT_NU
    fluid[DEDT_NU] = FABS( rate_Code * Dens_Code );
 #  endif
-
+#  ifdef TEMP_IG
+   fluid[TEMP_IG] = Temp_MeV / Kelvin2MeV;
+#  endif
 
 // final check
 #  ifdef GAMER_DEBUG

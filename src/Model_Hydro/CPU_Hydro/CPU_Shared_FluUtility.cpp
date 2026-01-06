@@ -17,13 +17,13 @@ static real Hydro_Con2Pres( const real Dens, const real MomX, const real MomY, c
                             const real Passive[], const bool CheckMinPres, const real MinPres, const long PassiveFloor, const real Emag,
                             const EoS_DE2P_t EoS_DensEint2Pres, const EoS_GUESS_t EoS_GuessHTilde, const EoS_H2TEM_t EoS_HTilde2Temp,
                             const double EoS_AuxArray_Flt[], const int EoS_AuxArray_Int[],
-                            const real *const EoS_Table[EOS_NTABLE_MAX], real *EintOut );
+                            const void *const EoS_Table[EOS_NTABLE_MAX], real *EintOut );
 GPU_DEVICE
 static real Hydro_Con2Eint( const real Dens, const real MomX, const real MomY, const real MomZ, const real Engy,
                             const bool CheckMinEint, const real MinEint, const long PassiveFloor, const real Emag,
                             const EoS_GUESS_t EoS_GuessHTilde, const EoS_H2TEM_t EoS_HTilde2Temp,
                             const double EoS_AuxArray_Flt[], const int EoS_AuxArray_Int[],
-                            const real *const EoS_Table[EOS_NTABLE_MAX] );
+                            const void *const EoS_Table[EOS_NTABLE_MAX] );
 GPU_DEVICE
 static real Hydro_ConEint2Etot( const real Dens, const real MomX, const real MomY, const real MomZ, const real Eint,
                                 const real Emag );
@@ -40,7 +40,7 @@ static bool Hydro_IsUnphysical( const IsUnphyMode_t Mode, const real Fields[],
                                 const real Emag, const EoS_DE2P_t EoS_DensEint2Pres,
                                 const EoS_GUESS_t EoS_GuessHTilde, const EoS_H2TEM_t EoS_HTilde2Temp,
                                 const double EoS_AuxArray_Flt[], const int EoS_AuxArray_Int[],
-                                const real *const EoS_Table[EOS_NTABLE_MAX], const long PassiveFloor,
+                                const void *const EoS_Table[EOS_NTABLE_MAX], const long PassiveFloor,
                                 const char File[], const int Line, const char Function[], const IsUnphVerb_t Verbose );
 GPU_DEVICE
 static bool Hydro_IsUnphysical_Single( const real Field, const char SingleFieldName[], const real Min, const real Max,
@@ -49,7 +49,7 @@ static bool Hydro_IsUnphysical_Single( const real Field, const char SingleFieldN
 GPU_DEVICE
 static real Hydro_Con2HTilde( const real Con[], const EoS_GUESS_t EoS_GuessHTilde, const EoS_H2TEM_t EoS_HTilde2Temp,
                               const double EoS_AuxArray_Flt[], const int EoS_AuxArray_Int[],
-                              const real *const EoS_Table[EOS_NTABLE_MAX] );
+                              const void *const EoS_Table[EOS_NTABLE_MAX] );
 #endif
 #endif // #ifdef __CUDACC__
 
@@ -212,7 +212,7 @@ void Hydro_Con2Pri( const real In[], real Out[], const real MinPres, const long 
                     const EoS_DE2P_t EoS_DensEint2Pres, const EoS_DP2E_t EoS_DensPres2Eint,
                     const EoS_GUESS_t EoS_GuessHTilde, const EoS_H2TEM_t EoS_HTilde2Temp,
                     const double EoS_AuxArray_Flt[], const int EoS_AuxArray_Int[],
-                    const real *const EoS_Table[EOS_NTABLE_MAX], real* const EintOut, real* LorentzFactorPtr )
+                    const void *const EoS_Table[EOS_NTABLE_MAX], real* const EintOut, real* LorentzFactorPtr )
 {
 
 // conserved --> primitive
@@ -344,7 +344,7 @@ void Hydro_Pri2Con( const real In[], real Out[], const bool FracPassive,
                     const int NFrac, const int FracIdx[], const EoS_DP2E_t EoS_DensPres2Eint,
                     const EoS_TEM2H_t EoS_Temp2HTilde, const EoS_H2TEM_t EoS_HTilde2Temp,
                     const double EoS_AuxArray_Flt[], const int EoS_AuxArray_Int[],
-                    const real *const EoS_Table[EOS_NTABLE_MAX], const real* const EintIn )
+                    const void *const EoS_Table[EOS_NTABLE_MAX], const real* const EintIn )
 {
 
 #  ifdef SRHD
@@ -457,7 +457,7 @@ void Hydro_Pri2Con( const real In[], real Out[], const bool FracPassive,
 GPU_DEVICE
 void Hydro_Con2Flux( const int XYZ, real Flux[], const real In[], const real MinPres, const long PassiveFloor,
                      const EoS_DE2P_t EoS_DensEint2Pres, const double EoS_AuxArray_Flt[], const int EoS_AuxArray_Int[],
-                     const real *const EoS_Table[EOS_NTABLE_MAX], const real* const AuxArray )
+                     const void *const EoS_Table[EOS_NTABLE_MAX], const real* const AuxArray )
 {
 
 #  if ( defined GAMER_DEBUG  &&  defined SRHD )
@@ -567,7 +567,7 @@ void Hydro_Con2Flux( const int XYZ, real Flux[], const real In[], const real Min
 GPU_DEVICE
 real Hydro_Con2HTilde( const real Con[], const EoS_GUESS_t EoS_GuessHTilde, const EoS_H2TEM_t EoS_HTilde2Temp,
                        const double EoS_AuxArray_Flt[], const int EoS_AuxArray_Int[],
-                       const real *const EoS_Table[EOS_NTABLE_MAX] )
+                       const void *const EoS_Table[EOS_NTABLE_MAX] )
 {
 
    real HTilde, GuessHTilde, MSqr_DSqr, Constant;
@@ -844,7 +844,7 @@ bool Hydro_IsUnphysical( const IsUnphyMode_t Mode, const real Fields[],
                          const real Emag, const EoS_DE2P_t EoS_DensEint2Pres,
                          const EoS_GUESS_t EoS_GuessHTilde, const EoS_H2TEM_t EoS_HTilde2Temp,
                          const double EoS_AuxArray_Flt[], const int EoS_AuxArray_Int[],
-                         const real *const EoS_Table[EOS_NTABLE_MAX], const long PassiveFloor,
+                         const void *const EoS_Table[EOS_NTABLE_MAX], const long PassiveFloor,
                          const char File[], const int Line, const char Function[], const IsUnphVerb_t Verbose )
 {
 
@@ -1166,7 +1166,7 @@ real Hydro_Con2Pres( const real Dens, const real MomX, const real MomY, const re
                      const real Passive[], const bool CheckMinPres, const real MinPres, const long PassiveFloor, const real Emag,
                      const EoS_DE2P_t EoS_DensEint2Pres, const EoS_GUESS_t EoS_GuessHTilde,
                      const EoS_H2TEM_t EoS_HTilde2Temp, const double EoS_AuxArray_Flt[],
-                     const int EoS_AuxArray_Int[], const real *const EoS_Table[EOS_NTABLE_MAX], real *EintOut )
+                     const int EoS_AuxArray_Int[], const void *const EoS_Table[EOS_NTABLE_MAX], real *EintOut )
 {
 
    real Pres;
@@ -1260,7 +1260,7 @@ real Hydro_Con2Eint( const real Dens, const real MomX, const real MomY, const re
                      const bool CheckMinEint, const real MinEint, const long PassiveFloor, const real Emag,
                      const EoS_GUESS_t EoS_GuessHTilde, const EoS_H2TEM_t EoS_HTilde2Temp,
                      const double EoS_AuxArray_Flt[], const int EoS_AuxArray_Int[],
-                     const real *const EoS_Table[EOS_NTABLE_MAX] )
+                     const void *const EoS_Table[EOS_NTABLE_MAX] )
 {
 
    real Eint;
@@ -1374,7 +1374,7 @@ real Hydro_Con2Temp( const real Dens, const real MomX, const real MomY, const re
                      const real Passive[], const bool CheckMinTemp, const real MinTemp, const long PassiveFloor, const real Emag,
                      const EoS_DE2T_t EoS_DensEint2Temp, const EoS_GUESS_t EoS_GuessHTilde, const EoS_H2TEM_t EoS_HTilde2Temp,
                      const double EoS_AuxArray_Flt[], const int EoS_AuxArray_Int[],
-                     const real *const EoS_Table[EOS_NTABLE_MAX] )
+                     const void *const EoS_Table[EOS_NTABLE_MAX] )
 {
 
 // check
@@ -1472,7 +1472,7 @@ GPU_DEVICE
 real Hydro_Con2Entr( const real Dens, const real MomX, const real MomY, const real MomZ, const real Engy,
                      const real Passive[], const bool CheckMinEntr, const real MinEntr, const long PassiveFloor, const real Emag,
                      const EoS_DE2S_t EoS_DensEint2Entr, const double EoS_AuxArray_Flt[], const int EoS_AuxArray_Int[],
-                     const real *const EoS_Table[EOS_NTABLE_MAX] )
+                     const void *const EoS_Table[EOS_NTABLE_MAX] )
 {
 
 // check
