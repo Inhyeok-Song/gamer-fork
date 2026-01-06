@@ -618,7 +618,7 @@ void GREP_Check_Profile( const int lv, Profile_t *Prof[], const int NProf )
             fprintf( File, "# LogBinRatio        : %13.7e\n",               Prof[0]->LogBinRatio );
             fprintf( File, "# NBin               : %d\n",                   NBin );
             fprintf( File, "# -----------------------------------------------\n" );
-            fprintf( File, "%5s %9s %22s %22s %22s %22s %22s\n",
+            fprintf( File, "%5s %9s %22s %22s %22s %22s %22s %22s %22s\n",
                            "# Bin", "NCell", "Radius", "Density", "Energy", "Vr", "Pressure", "Temperature", "Ye" );
 
 //          data
