@@ -300,7 +300,7 @@ void Output_DumpData( const int Stage )
 #                 endif
 
                   SrcTerms.Leakage_CPUPtr( fluid, B, &SrcTerms, dt, NULL_REAL, x, y, z, NULL_REAL, NULL_REAL,
-                                           MIN_DENS, MIN_PRES, MIN_EINT, NULL,
+                                           MIN_DENS, MIN_PRES, MIN_EINT, PassiveFloorMask, &EoS,
                                            Src_Leakage_AuxArray_Flt, Src_Leakage_AuxArray_Int );
 
                   amr->patch[FluSg][lv][PID]->fluid[DEDT_NU ][k][j][i] = fluid[DEDT_NU ];

@@ -356,7 +356,7 @@ void Record_CCSN_Leakage()
 #              endif
 
                SrcTerms.Leakage_CPUPtr( fluid, B, &SrcTerms, 0.0, NULL_REAL, x, y, z, NULL_REAL, NULL_REAL,
-                                        MIN_DENS, MIN_PRES, MIN_EINT, &EoS,
+                                        MIN_DENS, MIN_PRES, MIN_EINT, PassiveFloorMask, &EoS,
                                         Src_Leakage_AuxArray_Flt, Src_Leakage_AuxArray_Int );
 
                if ( fluid[DENS] > 0.0 )
