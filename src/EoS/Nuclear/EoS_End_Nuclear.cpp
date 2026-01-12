@@ -26,6 +26,19 @@ extern real *g_logtemp_mode;
 #endif
 
 
+#ifdef HELMHOLTZ_EOS
+extern double  *g_helmholtz_table;
+extern double  *g_helmholtz_dd;
+extern double  *g_helmholtz_dt;
+extern double  *g_helm_dens;
+extern double  *g_helm_temp;
+extern double  *g_helm_diff;
+extern double  *g_prog_dens;
+extern double  *g_prog_abar;
+extern double  *g_prog_zbar;
+#endif
+
+
 
 
 //-------------------------------------------------------------------------------------------------------
@@ -57,6 +70,18 @@ void EoS_End_Nuclear()
    free( g_logtemp_mode   );  g_logtemp_mode   = NULL;
 #  endif
    free( g_yes_mode       );  g_yes_mode       = NULL;
+
+#  ifdef HELMHOLTZ_EOS
+   free( g_helmholtz_table ); g_helmholtz_table = NULL;
+   free( g_helmholtz_dd    ); g_helmholtz_dd    = NULL;
+   free( g_helmholtz_dt    ); g_helmholtz_dt    = NULL;
+   free( g_helm_dens       ); g_helm_dens       = NULL;
+   free( g_helm_temp       ); g_helm_temp       = NULL;
+   free( g_helm_diff       ); g_helm_diff       = NULL;
+   free( g_prog_dens       ); g_prog_dens       = NULL;
+   free( g_prog_abar       ); g_prog_abar       = NULL;
+   free( g_prog_zbar       ); g_prog_zbar       = NULL;
+#  endif
 
 
 

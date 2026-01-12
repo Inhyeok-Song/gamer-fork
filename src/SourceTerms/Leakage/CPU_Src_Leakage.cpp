@@ -132,8 +132,8 @@ void Src_SetAuxArray_Leakage( double AuxArray_Flt[], int AuxArray_Int[] )
    AuxArray_Flt[SRC_AUX_DTHETA    ] = M_PI / SrcTerms.Leakage_NTheta;
    AuxArray_Flt[SRC_AUX_DPHI      ] = 2.0 * M_PI / SrcTerms.Leakage_NPhi;
 #  if ( EOS == EOS_NUCLEAR )
-   AuxArray_Flt[SRC_AUX_YEMIN     ] = ( 1.0 + Ye_Frac ) * h_EoS_Table[NUC_TAB_YE][0];
-   AuxArray_Flt[SRC_AUX_YEMAX     ] = ( 1.0 - Ye_Frac ) * h_EoS_Table[NUC_TAB_YE][g_nye-1];
+   AuxArray_Flt[SRC_AUX_YEMIN     ] = ( 1.0 + Ye_Frac ) * ( (real*)h_EoS_Table[NUC_TAB_YE] )[0];
+   AuxArray_Flt[SRC_AUX_YEMAX     ] = ( 1.0 - Ye_Frac ) * ( (real*)h_EoS_Table[NUC_TAB_YE] )[g_nye-1];
 #  endif
    AuxArray_Flt[SRC_AUX_VSQR2CODE ] = 1.0 / SQR( UNIT_V );
 
@@ -250,6 +250,31 @@ static void Src_Leakage( real fluid[], const real B[],
 
       return;
    }
+
+// do nothing if the density is lower than hybrid EoS region
+#  ifdef HELMHOLTZ_EOS
+   if ( fluid[DENS] * SrcTerms->Unit_D  <= (real)EoS->Helm_Dens_Trans )
+   {
+      if ( Mode == LEAK_MODE_RECORD )
+      {
+         fluid[DENS] = (real)0.0;
+         fluid[MOMX] = (real)0.0;
+         fluid[MOMY] = (real)0.0;
+         fluid[MOMZ] = (real)0.0;
+         fluid[ENGY] = (real)0.0;
+#        ifdef YE
+         fluid[YE  ] = (real)0.0;
+#        endif
+      }
+
+#     ifdef DYEDT_NU
+      fluid[DEDT_NU ] = (real)0.0;
+      fluid[DYEDT_NU] = (real)0.0;
+#     endif
+
+      return;
+   }
+#  endif
 
 
 // (1) set up the data index and coordinate
@@ -492,8 +517,9 @@ static void Src_Leakage( real fluid[], const real B[],
                                           EoS->AuxArrayDevPtr_Int, EoS->Table );
 #  else
    const real Eint_Code = Hydro_Con2Eint( fluid[DENS], fluid[MOMX], fluid[MOMY], fluid[MOMZ], fluid[ENGY],
-                                          true, MinEint, PassiveFloor, Emag, EoS_GuessHTilde_CPUPtr, EoS_HTilde2Temp_CPUPtr,
-                                          EoS_AuxArray_Flt, EoS_AuxArray_Int, h_EoS_Table );
+                                          true, MinEint, PassiveFloor, Emag, EoS_GuessHTilde_CPUPtr,
+                                          EoS_HTilde2Temp_CPUPtr, EoS_AuxArray_Flt,
+                                          EoS_AuxArray_Int, h_EoS_Table );
 #  endif
 
 #  ifdef YE

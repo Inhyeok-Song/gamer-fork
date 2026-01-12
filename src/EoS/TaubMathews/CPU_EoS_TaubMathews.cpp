@@ -87,7 +87,7 @@ void EoS_SetAuxArray_TaubMathews( double AuxArray_Flt[], int AuxArray_Int[] )
 //-------------------------------------------------------------------------------------------------------
 GPU_DEVICE_NOINLINE
 static real EoS_GuessHTilde_TaubMathews( const real Con[], real* const Constant, const double AuxArray_Flt[],
-                                         const int AuxArray_Int[], const real *const Table[EOS_NTABLE_MAX] )
+                                         const int AuxArray_Int[], const void *const Table[EOS_NTABLE_MAX] )
 {
 
    real GuessHTilde, Discrimination;
@@ -158,7 +158,7 @@ static real EoS_GuessHTilde_TaubMathews( const real Con[], real* const Constant,
 GPU_DEVICE_NOINLINE
 static void EoS_HTilde2Temp_TaubMathews( const real HTilde, real* const Temp, real* const DiffTemp,
                                          const real Passive[], const double AuxArray_Flt[],
-                                         const int AuxArray_Int[], const real *const Table[EOS_NTABLE_MAX] )
+                                         const int AuxArray_Int[], const void *const Table[EOS_NTABLE_MAX] )
 {
 
   const real HTildeSqr = SQR(HTilde);
@@ -192,7 +192,7 @@ static void EoS_HTilde2Temp_TaubMathews( const real HTilde, real* const Temp, re
 //-------------------------------------------------------------------------------------------------------
 GPU_DEVICE_NOINLINE
 static real EoS_Temp2HTilde_TaubMathews( const real Temp, const real Passive[], const double AuxArray_Flt[],
-                                         const int AuxArray_Int[], const real *const Table[EOS_NTABLE_MAX] )
+                                         const int AuxArray_Int[], const void *const Table[EOS_NTABLE_MAX] )
 {
 
    const real TempSqr = Temp*Temp;
@@ -227,7 +227,7 @@ static real EoS_Temp2HTilde_TaubMathews( const real Temp, const real Passive[], 
 GPU_DEVICE_NOINLINE
 static real EoS_DensPres2CSqr_TaubMathews( const real Dens, const real Pres, const real Passive[],
                                            const double AuxArray_Flt[], const int AuxArray_Int[],
-                                           const real *const Table[EOS_NTABLE_MAX] )
+                                           const void *const Table[EOS_NTABLE_MAX] )
 {
 
    real Cs2, Temp, factor;

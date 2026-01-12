@@ -3,7 +3,7 @@
 
 #if ( defined GPU  &&  MODEL == HYDRO )
 
-extern real *d_EoS_Table[EOS_NTABLE_MAX];
+extern void *d_EoS_Table[EOS_NTABLE_MAX];
 
 
 

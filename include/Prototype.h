@@ -118,22 +118,22 @@ real Hydro_Con2Pres( const real Dens, const real MomX, const real MomY, const re
                      const real Passive[], const bool CheckMinPres, const real MinPres, const long PassiveFloor, const real Emag,
                      const EoS_DE2P_t EoS_DensEint2Pres, const EoS_GUESS_t EoS_GuessHTilde,
                      const EoS_H2TEM_t EoS_HTilde2Temp, const double EoS_AuxArray_Flt[],
-                     const int EoS_AuxArray_Int[], const real *const EoS_Table[EOS_NTABLE_MAX], real *EintOut );
+                     const int EoS_AuxArray_Int[], const void *const EoS_Table[EOS_NTABLE_MAX], real *EintOut );
 real Hydro_Con2Eint( const real Dens, const real MomX, const real MomY, const real MomZ, const real Engy,
                      const bool CheckMinEint, const real MinEint, const long PassiveFloor, const real Emag,
                      const EoS_GUESS_t EoS_GuessHTilde, const EoS_H2TEM_t EoS_HTilde2Temp,
                      const double EoS_AuxArray_Flt[], const int EoS_AuxArray_Int[],
-                     const real *const EoS_Table[EOS_NTABLE_MAX] );
+                     const void *const EoS_Table[EOS_NTABLE_MAX] );
 real Hydro_ConEint2Etot( const real Dens, const real MomX, const real MomY, const real MomZ, const real Eint, const real Emag );
 real Hydro_Con2Temp( const real Dens, const real MomX, const real MomY, const real MomZ, const real Engy,
                      const real Passive[], const bool CheckMinTemp, const real MinTemp, const long PassiveFloor, const real Emag,
                      const EoS_DE2T_t EoS_DensEint2Temp, const EoS_GUESS_t EoS_GuessHTilde, const EoS_H2TEM_t EoS_HTilde2Temp,
                      const double EoS_AuxArray_Flt[], const int EoS_AuxArray_Int[],
-                     const real *const EoS_Table[EOS_NTABLE_MAX] );
+                     const void *const EoS_Table[EOS_NTABLE_MAX] );
 real Hydro_Con2Entr( const real Dens, const real MomX, const real MomY, const real MomZ, const real Engy,
                      const real Passive[], const bool CheckMinEntr, const real MinEntr, const long PassiveFloor, const real Emag,
                      const EoS_DE2S_t EoS_DensEint2Entr, const double EoS_AuxArray_Flt[], const int EoS_AuxArray_Int[],
-                     const real *const EoS_Table[EOS_NTABLE_MAX] );
+                     const void *const EoS_Table[EOS_NTABLE_MAX] );
 real Hydro_CheckMinPres( const real InPres, const real MinPres );
 real Hydro_CheckMinEint( const real InEint, const real MinEint );
 real Hydro_CheckMinTemp( const real InTemp, const real MinTemp );
@@ -144,7 +144,7 @@ bool Hydro_IsUnphysical( const IsUnphyMode_t Mode, const real Fields[],
                          const real Emag, const EoS_DE2P_t EoS_DensEint2Pres,
                          const EoS_GUESS_t EoS_GuessHTilde, const EoS_H2TEM_t EoS_HTilde2Temp,
                          const double EoS_AuxArray_Flt[], const int EoS_AuxArray_Int[],
-                         const real *const EoS_Table[EOS_NTABLE_MAX], const long PassiveFloor,
+                         const void *const EoS_Table[EOS_NTABLE_MAX], const long PassiveFloor,
                          const char File[], const int Line, const char Function[], const IsUnphVerb_t Verbose );
 bool Hydro_IsUnphysical_Single( const real Field, const char SingleFieldName[], const real Min, const real Max,
                                 const char File[], const int Line, const char Function[], const IsUnphVerb_t Verbose );
@@ -155,7 +155,7 @@ void Hydro_DualEnergyFix( const real Dens, const real MomX, const real MomY, con
                           const real Emag );
 real Hydro_Con2Dual( const real Dens, const real MomX, const real MomY, const real MomZ, const real Engy,
                      const real Emag, const EoS_DE2P_t EoS_DensEint2Pres, const double EoS_AuxArray_Flt[],
-                     const int EoS_AuxArray_Int[], const real *const EoS_Table[EOS_NTABLE_MAX], const long PassiveFloor );
+                     const int EoS_AuxArray_Int[], const void *const EoS_Table[EOS_NTABLE_MAX], const long PassiveFloor );
 real Hydro_DensPres2Dual( const real Dens, const real Pres, const real Gamma_m1 );
 real Hydro_DensDual2Pres( const real Dens, const real Dual, const real Gamma_m1,
                           const bool CheckMinPres, const real MinPres );
@@ -164,7 +164,7 @@ real Hydro_DensDual2Pres( const real Dens, const real Dual, const real Gamma_m1,
 #ifdef SRHD
 real Hydro_Con2HTilde( const real Con[], const EoS_GUESS_t EoS_GuessHTilde, const EoS_H2TEM_t EoS_HTilde2Temp,
                        const double EoS_AuxArray_Flt[], const int EoS_AuxArray_Int[],
-                       const real *const EoS_Table[EOS_NTABLE_MAX] );
+                       const void *const EoS_Table[EOS_NTABLE_MAX] );
 #endif
 int Flu_AdvanceDt( const int lv, const double TimeNew, const double TimeOld, const double dt,
                    const int SaveSg_Flu, const int SaveSg_Mag, const bool OverlapMPI, const bool Overlap_Sync );
@@ -540,11 +540,11 @@ void Hydro_Con2Pri( const real In[], real Out[], const real MinPres, const long 
                     const EoS_DE2P_t EoS_DensEint2Pres, const EoS_DP2E_t EoS_DensPres2Eint,
                     const EoS_GUESS_t EoS_GuessHTilde, const EoS_H2TEM_t EoS_HTilde2Temp,
                     const double EoS_AuxArray_Flt[], const int EoS_AuxArray_Int[],
-                    const real *const EoS_Table[EOS_NTABLE_MAX], real* const EintOut, real* LorentzFactorPtr );
+                    const void *const EoS_Table[EOS_NTABLE_MAX], real* const EintOut, real* LorentzFactorPtr );
 void Hydro_Pri2Con( const real In[], real Out[], const bool FracPassive, const int NFrac, const int FracIdx[],
                     const EoS_DP2E_t EoS_DensPres2Eint, const EoS_TEM2H_t EoS_Temp2HTilde, const EoS_H2TEM_t EoS_HTilde2Temp,
                     const double EoS_AuxArray_Flt[], const int EoS_AuxArray_Int[],
-                    const real *const EoS_Table[EOS_NTABLE_MAX], const real* const EintIn );
+                    const void *const EoS_Table[EOS_NTABLE_MAX], const real* const EintIn );
 #ifdef MHD
 void MHD_GetCellCenteredBField( real B_CC[], const real Bx_FC[], const real By_FC[], const real Bz_FC[],
                                 const int Nx, const int Ny, const int Nz, const int i, const int j, const int k );

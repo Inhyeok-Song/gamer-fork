@@ -7,7 +7,12 @@
 
 
 #define NUC_TABLE_NVAR       16     // number of variables in the Nuclear EoS table
+#ifdef  HELMHOLTZ_EOS
+#define NUC_TABLE_NPTR       19     // number of table pointers to be sent to GPU
+#define HELM_TABLE_NVAR      21     // number of variables in the Helmholtz EoS table
+#else
 #define NUC_TABLE_NPTR       10     // number of table pointers to be sent to GPU
+#endif
 
 
 // auxiliary array indices
@@ -21,6 +26,12 @@
 #define NUC_AUX_MEV2KELVIN    7     // AuxArray_Flt: convert MeV        to kelvin
 #define NUC_AUX_M_kB          8     // AuxArray_Flt: mean molecular weight*atomic mass unit/
                                     //               Bolzmann constant*(UNIT_E/UNIT_M)
+#ifdef HELMHOLTZ_EOS
+#define NUC_AUX_DENS_TRANS    9     // AuxArray_Flt: transition density nuclear/Helmholtz EoS
+#define NUC_AUX_DENS_STOP    10     // AuxArray_Flt: density lower limit for nuclear EoS
+#define NUC_AUX_ALPHA        11     // AuxArray_Flt: decline parameter in transition region
+#define NUC_AUX_CSHIFT       12     // AuxArray_Flt: energy shift at transition density
+#endif
 
 #define NUC_AUX_NRHO          0     // AuxArray_Int: nrho
 #define NUC_AUX_NTORE         1     // AuxArray_Int: ntemp/neps
@@ -30,6 +41,9 @@
 #define NUC_AUX_NYE_MODE      5     // AuxArray_Int: nye_mode
 #define NUC_AUX_INT_AUX       6     // AuxArray_Int: interpolation scheme for auxiliary   table
 #define NUC_AUX_INT_MAIN      7     // AuxArray_Int: interpolation scheme for Nuclear EoS table
+#define NUC_AUX_HELM_I        8     // AuxArray_Int: Helmholtz EoS table row    size
+#define NUC_AUX_HELM_J        9     // AuxArray_Int: Helmholtz EoS table column size
+#define NUC_AUX_PROG_NBIN    10     // AuxArray_Int: progenitor model column size
 
 
 // table indices
@@ -43,6 +57,17 @@
 #define NUC_TAB_ENTR_MODE     7     // entr_mode
 #define NUC_TAB_PRES_MODE     8     // logprss_mode
 #define NUC_TAB_YE_MODE       9     // yes_mode
+#ifdef HELMHOLTZ_EOS
+#define NUC_TABLE_HELM       10     // Helmholtz table
+#define NUC_TABLE_HELM_DD    11     // derivative of density
+#define NUC_TABLE_HELM_DT    12     // derivative of temperature
+#define NUC_TABLE_HELM_DENS  13     // density
+#define NUC_TABLE_HELM_TEMP  14     // temperature
+#define NUC_TABLE_HELM_DIFF  15     // E_nuc - E_Helm - c_shift
+#define NUC_TABLE_PROG_DENS  16     // progenitor density
+#define NUC_TABLE_PROG_ABAR  17     // progenitor Abar
+#define NUC_TABLE_PROG_ZBAR  18     // progenitor Zbar
+#endif
 
 
 // EoS modes

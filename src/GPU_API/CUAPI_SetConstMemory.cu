@@ -7,7 +7,7 @@
 
 #ifdef GPU
 
-extern real *d_EoS_Table[EOS_NTABLE_MAX];
+extern void *d_EoS_Table[EOS_NTABLE_MAX];
 
 #ifdef GRAVITY
 void CUAPI_SetConstMemory_ExtAccPot();

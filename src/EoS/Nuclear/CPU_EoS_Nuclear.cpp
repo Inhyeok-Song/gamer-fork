@@ -1,4 +1,7 @@
 #include "NuclearEoS.h"
+#ifdef HELMHOLTZ_EOS
+#include "HelmholtzEoS.h"
+#endif
 #ifdef __CUDACC__
 #include "CUDA_CheckError.h"
 #include "CUFLU_Shared_FluUtility.cu"
@@ -11,41 +14,66 @@
 #ifdef __CUDACC__
 
 #include "NuclearEoS.cu"
+#ifdef HELMHOLTZ_EOS
+#include "HelmholtzEoS.cu"
+#endif
 __device__ static real EoS_DensEint2Pres_Nuclear( const real Dens_Code, const real Eint_Code, const real Passive_Code[],
                                                   const double AuxArray_Flt[], const int AuxArray_Int[],
-                                                  const real *const Table[EOS_NTABLE_MAX] );
+                                                  const void *const Table[EOS_NTABLE_MAX] );
 __device__ static void EoS_General_Nuclear( const int Mode, real Out[], const real In_Flt[], const int In_Int[],
                                             const double AuxArray_Flt[], const int AuxArray_Int[],
-                                            const real *const Table[EOS_NTABLE_MAX] );
+                                            const void *const Table[EOS_NTABLE_MAX] );
 
 #else
 
 // global variables
-int    g_nrho;
-int    g_nye;
-int    g_nrho_mode;
-int    g_nmode;
-int    g_nye_mode;
-double g_energy_shift;
+int     g_nrho;
+int     g_nye;
+int     g_nrho_mode;
+int     g_nmode;
+int     g_nye_mode;
+double  g_energy_shift;
 
-real  *g_alltables      = NULL;
-real  *g_alltables_mode = NULL;
-real  *g_logrho         = NULL;
-real  *g_yes            = NULL;
-real  *g_logrho_mode    = NULL;
-real  *g_entr_mode      = NULL;
-real  *g_logprss_mode   = NULL;
-real  *g_yes_mode       = NULL;
+real   *g_alltables      = NULL;
+real   *g_alltables_mode = NULL;
+real   *g_logrho         = NULL;
+real   *g_yes            = NULL;
+real   *g_logrho_mode    = NULL;
+real   *g_entr_mode      = NULL;
+real   *g_logprss_mode   = NULL;
+real   *g_yes_mode       = NULL;
 
 
 #if ( NUC_TABLE_MODE == NUC_TABLE_MODE_TEMP )
-int    g_ntemp;
-real  *g_logtemp        = NULL;
-real  *g_logeps_mode    = NULL;
+int     g_ntemp;
+real   *g_logtemp        = NULL;
+real   *g_logeps_mode    = NULL;
 #else
-int    g_neps;
-real  *g_logeps         = NULL;
-real  *g_logtemp_mode   = NULL;
+int     g_neps;
+real   *g_logeps         = NULL;
+real   *g_logtemp_mode   = NULL;
+#endif
+
+
+#ifdef HELMHOLTZ_EOS
+int     g_helm_imax;
+int     g_helm_jmax;
+int     g_prog_nbin;
+double  g_c_shift;
+double  g_helm_alpha;
+
+
+double *g_helmholtz_table = NULL;
+double *g_helmholtz_dd    = NULL;
+double *g_helmholtz_dt    = NULL;
+double *g_helm_dens       = NULL;
+double *g_helm_temp       = NULL;
+double *g_helm_diff       = NULL;
+double *g_prog_dens       = NULL;
+double *g_prog_abar       = NULL;
+double *g_prog_zbar       = NULL;
+double *g_prog_xn         = NULL;
+double *g_prog_xp         = NULL;
 #endif
 
 
@@ -61,14 +89,27 @@ void nuc_eos_C_short( real *Out, const real *In,
                       const int IntScheme_Aux, const int IntScheme_Main,
                       const int keymode, int *keyerr, const real rfeps );
 void nuc_eos_C_ReadTable( char *nuceos_table_name );
+#ifdef HELMHOLTZ_EOS
+void Helmholtz_eos( real *Out, const real *In, const int NTarget, const int *TargetIdx,
+                    real Temp_InitGuess, const real c_shift, const int imax, const int jmax,
+                    const double *helmholtz_table, const double *helmholtz_dd, const double *helmholtz_dt,
+                    const double *helm_dens, const double *helm_temp, const double *helm_diff,
+                    const double *prog_dens, const double *prog_abar, const double *prog_zbar,
+                    const int prog_nbin, const real dens_trans, const real dens_stop, const real alpha,
+                    const int nrho, const int ntoreps, const int nye, const real *alltables,
+                    const real *logrho, const real *logtoreps, const real *yes,
+                    const int IntScheme_Aux, const int IntScheme_Main,
+                    const int keymode, int *keyerr, const real rfeps );
+void Helm_eos_ReadTable( char *helmeos_table_name );
+#endif
 void CUAPI_PassNuclearEoSTable2GPU();
 
 static real EoS_DensEint2Pres_Nuclear( const real Dens_Code, const real Eint_Code, const real Passive_Code[],
                                        const double AuxArray_Flt[], const int AuxArray_Int[],
-                                       const real *const Table[EOS_NTABLE_MAX] );
+                                       const void *const Table[EOS_NTABLE_MAX] );
 static void EoS_General_Nuclear( const int Mode, real Out[], const real In_Flt[], const int In_Int[],
                                  const double AuxArray_Flt[], const int AuxArray_Int[],
-                                 const real *const Table[EOS_NTABLE_MAX] );
+                                 const void *const Table[EOS_NTABLE_MAX] );
 
 #endif // #ifdef __CUDACC__ ... else ...
 
@@ -126,6 +167,12 @@ void EoS_SetAuxArray_Nuclear( double AuxArray_Flt[], int AuxArray_Int[] )
    AuxArray_Flt[NUC_AUX_VSQR2CODE ] = 1.0 / SQR(UNIT_V);
    AuxArray_Flt[NUC_AUX_KELVIN2MEV] = Const_kB_eV*1.0e-6;
    AuxArray_Flt[NUC_AUX_MEV2KELVIN] = 1.0 / AuxArray_Flt[NUC_AUX_KELVIN2MEV];
+#  ifdef HELMHOLTZ_EOS
+   AuxArray_Flt[NUC_AUX_DENS_TRANS] = EoS.Helm_Dens_Trans;
+   AuxArray_Flt[NUC_AUX_DENS_STOP ] = EoS.Helm_Dens_Stop;
+   AuxArray_Flt[NUC_AUX_CSHIFT    ] = g_c_shift;
+   AuxArray_Flt[NUC_AUX_ALPHA     ] = g_helm_alpha;
+#  endif
 
    AuxArray_Int[NUC_AUX_NRHO      ] = g_nrho;
 #  if ( NUC_TABLE_MODE == NUC_TABLE_MODE_TEMP )
@@ -139,6 +186,11 @@ void EoS_SetAuxArray_Nuclear( double AuxArray_Flt[], int AuxArray_Int[] )
    AuxArray_Int[NUC_AUX_NYE_MODE  ] = g_nye_mode;
    AuxArray_Int[NUC_AUX_INT_AUX   ] = NUC_INT_SCHEME_AUX;
    AuxArray_Int[NUC_AUX_INT_MAIN  ] = NUC_INT_SCHEME_MAIN;
+#  ifdef HELMHOLTZ_EOS
+   AuxArray_Int[NUC_AUX_HELM_I    ] = g_helm_imax;
+   AuxArray_Int[NUC_AUX_HELM_J    ] = g_helm_jmax;
+   AuxArray_Int[NUC_AUX_PROG_NBIN ] = g_prog_nbin;
+#  endif
 
 } // FUNCTION : EoS_SetAuxArray_Nuclear
 #endif // #ifndef __CUDACC__
@@ -199,7 +251,7 @@ bool Nuc_Overflow( const real x )
 GPU_DEVICE_NOINLINE
 static real EoS_DensEint2Pres_Nuclear( const real Dens_Code, const real Eint_Code, const real Passive_Code[],
                                        const double AuxArray_Flt[], const int AuxArray_Int[],
-                                       const real *const Table[EOS_NTABLE_MAX] )
+                                       const void *const Table[EOS_NTABLE_MAX] )
 {
 
 // check
@@ -223,6 +275,12 @@ static real EoS_DensEint2Pres_Nuclear( const real Dens_Code, const real Eint_Cod
 #  if ( NUC_TABLE_MODE == NUC_TABLE_MODE_TEMP )
    const real Kelvin2MeV  = AuxArray_Flt[NUC_AUX_KELVIN2MEV];
 #  endif
+#  ifdef HELMHOLTZ_EOS
+   const real Dens_Trans  = AuxArray_Flt[NUC_AUX_DENS_TRANS];
+   const real Dens_Stop   = AuxArray_Flt[NUC_AUX_DENS_STOP ];
+   const real C_Shift     = AuxArray_Flt[NUC_AUX_CSHIFT    ];
+   const real Alpha       = AuxArray_Flt[NUC_AUX_ALPHA     ];
+#  endif
 
    const int  NRho        = AuxArray_Int[NUC_AUX_NRHO      ];
    const int  NTorE       = AuxArray_Int[NUC_AUX_NTORE     ];
@@ -232,11 +290,16 @@ static real EoS_DensEint2Pres_Nuclear( const real Dens_Code, const real Eint_Cod
    const int  NYe_Mode    = AuxArray_Int[NUC_AUX_NYE_MODE  ];
    const int  Int_Aux     = AuxArray_Int[NUC_AUX_INT_AUX   ];
    const int  Int_Main    = AuxArray_Int[NUC_AUX_INT_MAIN  ];
+#  ifdef HELMHOLTZ_EOS
+   const int  Helm_I      = AuxArray_Int[NUC_AUX_HELM_I    ];
+   const int  Helm_J      = AuxArray_Int[NUC_AUX_HELM_J    ];
+   const int  Prog_NBin   = AuxArray_Int[NUC_AUX_PROG_NBIN ];
+#  endif
 
 
    int  Mode      = NUC_MODE_ENGY;
    real Dens_CGS  = Dens_Code * Dens2CGS;
-   real sEint_CGS = ( Eint_Code / Dens_Code ) * sEint2CGS - EnergyShift;
+   real sEint_CGS = ( Eint_Code / Dens_Code ) * sEint2CGS;
    real Ye        = Passive_Code[ YE - NCOMP_FLUID ] / Dens_Code;
    int  Err       = NULL_INT;
 
@@ -257,9 +320,9 @@ static real EoS_DensEint2Pres_Nuclear( const real Dens_Code, const real Eint_Cod
       printf( "ERROR : EoS overflow (sEint_CGS %13.7e, Eint_Code %13.7e, Dens_Code %13.7e, sEint2CGS %13.7e) in %s() !!\n",
               sEint_CGS, Eint_Code, Dens_Code, sEint2CGS, __FUNCTION__ );
 
-   if ( Ye < (real)Table[NUC_TAB_YE][0]  ||  Ye > (real)Table[NUC_TAB_YE][NYe-1] )
+   if ( Ye < ( (real*)Table[NUC_TAB_YE] )[0]  ||  Ye > ( (real*)Table[NUC_TAB_YE] )[NYe-1] )
       printf( "ERROR : invalid Ye = %13.7e (min = %13.7e, max = %13.7e) in %s() !!\n",
-              Ye, Table[NUC_TAB_YE][0], Table[NUC_TAB_YE][NYe-1], __FUNCTION__ );
+              Ye, ( (real*)Table[NUC_TAB_YE] )[0], ( (real*)Table[NUC_TAB_YE] )[NYe-1], __FUNCTION__ );
 #  endif // GAMER_DEBUG
 
 
@@ -271,12 +334,28 @@ static real EoS_DensEint2Pres_Nuclear( const real Dens_Code, const real Eint_Cod
    In[1] = sEint_CGS;
    In[2] = Ye;
 
+#  ifdef HELMHOLTZ_EOS
+   if ( Dens_CGS > Dens_Trans )
+#  endif
 // invoke the nuclear EoS driver
    nuc_eos_C_short( Out, In, NTarget, TargetIdx,
                     EnergyShift, Temp_IG_MeV, NRho, NTorE, NYe, NRho_Mode, NMode, NYe_Mode,
-                    Table[NUC_TAB_ALL], Table[NUC_TAB_ALL_MODE], Table[NUC_TAB_RHO], Table[NUC_TAB_TORE], Table[NUC_TAB_YE],
-                    Table[NUC_TAB_RHO_MODE], Table[NUC_TAB_EORT_MODE], Table[NUC_TAB_YE_MODE],
+                    (real*)Table[NUC_TAB_ALL], (real*)Table[NUC_TAB_ALL_MODE], (real*)Table[NUC_TAB_RHO], (real*)Table[NUC_TAB_TORE], (real*)Table[NUC_TAB_YE],
+                    (real*)Table[NUC_TAB_RHO_MODE], (real*)Table[NUC_TAB_EORT_MODE], (real*)Table[NUC_TAB_YE_MODE],
                     Int_Aux, Int_Main, Mode, &Err, Tolerance );
+
+#  ifdef HELMHOLTZ_EOS
+   else
+   {
+      Helmholtz_eos( Out, In, NTarget, TargetIdx, Temp_IG_MeV, C_Shift, Helm_I, Helm_J,
+                     (double*)Table[NUC_TABLE_HELM], (double*)Table[NUC_TABLE_HELM_DD], (double*)Table[NUC_TABLE_HELM_DT],
+                     (double*)Table[NUC_TABLE_HELM_DENS], (double*)Table[NUC_TABLE_HELM_TEMP],
+                     (double*)Table[NUC_TABLE_HELM_DIFF], (double*)Table[NUC_TABLE_PROG_DENS], (double*)Table[NUC_TABLE_PROG_ABAR],
+                     (double*)Table[NUC_TABLE_PROG_ZBAR], Prog_NBin, Dens_Trans, Dens_Stop, Alpha, NRho, NTorE, NYe,
+                     (real*)Table[NUC_TAB_ALL], (real*)Table[NUC_TAB_RHO], (real*)Table[NUC_TAB_TORE], (real*)Table[NUC_TAB_YE],
+                     Int_Aux, Int_Main, Mode, &Err, Tolerance );
+   }
+#  endif
 
 // trigger a *hard failure* if the EoS driver fails
    if ( Err )   for (int i=0; i<NTarget+1; i++)   Out[i] = NAN;
@@ -319,7 +398,7 @@ static real EoS_DensEint2Pres_Nuclear( const real Dens_Code, const real Eint_Cod
 GPU_DEVICE_NOINLINE
 static real EoS_DensPres2Eint_Nuclear( const real Dens_Code, const real Pres_Code, const real Passive_Code[],
                                        const double AuxArray_Flt[], const int AuxArray_Int[],
-                                       const real *const Table[EOS_NTABLE_MAX] )
+                                       const void *const Table[EOS_NTABLE_MAX] )
 {
 
 // check
@@ -342,6 +421,12 @@ static real EoS_DensPres2Eint_Nuclear( const real Dens_Code, const real Pres_Cod
 #  if ( NUC_TABLE_MODE == NUC_TABLE_MODE_TEMP )
    const real Kelvin2MeV  = AuxArray_Flt[NUC_AUX_KELVIN2MEV];
 #  endif
+#  ifdef HELMHOLTZ_EOS
+   const real Dens_Trans  = AuxArray_Flt[NUC_AUX_DENS_TRANS];
+   const real Dens_Stop   = AuxArray_Flt[NUC_AUX_DENS_STOP ];
+   const real C_Shift     = AuxArray_Flt[NUC_AUX_CSHIFT    ];
+   const real Alpha       = AuxArray_Flt[NUC_AUX_ALPHA     ];
+#  endif
 
    const int  NRho        = AuxArray_Int[NUC_AUX_NRHO      ];
    const int  NTorE       = AuxArray_Int[NUC_AUX_NTORE     ];
@@ -351,6 +436,11 @@ static real EoS_DensPres2Eint_Nuclear( const real Dens_Code, const real Pres_Cod
    const int  NYe_Mode    = AuxArray_Int[NUC_AUX_NYE_MODE  ];
    const int  Int_Aux     = AuxArray_Int[NUC_AUX_INT_AUX   ];
    const int  Int_Main    = AuxArray_Int[NUC_AUX_INT_MAIN  ];
+#  ifdef HELMHOLTZ_EOS
+   const int  Helm_I      = AuxArray_Int[NUC_AUX_HELM_I    ];
+   const int  Helm_J      = AuxArray_Int[NUC_AUX_HELM_J    ];
+   const int  Prog_NBin   = AuxArray_Int[NUC_AUX_PROG_NBIN ];
+#  endif
 
    int  Mode     = NUC_MODE_PRES;
    real Dens_CGS = Dens_Code * Dens2CGS;
@@ -375,9 +465,9 @@ static real EoS_DensPres2Eint_Nuclear( const real Dens_Code, const real Pres_Cod
       printf( "ERROR : EoS overflow (Pres_CGS %13.7e, Pres_Code %13.7e, Pres2CGS %13.7e) in %s() !!\n",
               Pres_CGS, Pres_Code, Pres2CGS, __FUNCTION__ );
 
-   if ( Ye < (real)Table[NUC_TAB_YE][0]  ||  Ye > (real)Table[NUC_TAB_YE][NYe-1] )
+   if ( Ye < ( (real*)Table[NUC_TAB_YE] )[0]  ||  Ye > ( (real*)Table[NUC_TAB_YE] )[NYe-1] )
       printf( "ERROR : invalid Ye = %13.7e (min = %13.7e, max = %13.7e) in %s() !!\n",
-              Ye, Table[NUC_TAB_YE][0], Table[NUC_TAB_YE][NYe-1], __FUNCTION__ );
+              Ye, ( (real*)Table[NUC_TAB_YE] )[0], ( (real*)Table[NUC_TAB_YE] )[NYe-1], __FUNCTION__ );
 #  endif // GAMER_DEBUG
 
 
@@ -394,18 +484,34 @@ static real EoS_DensPres2Eint_Nuclear( const real Dens_Code, const real Pres_Cod
    In[1] = Pres_CGS;
    In[2] = Ye;
 
+#  ifdef HELMHOLTZ_EOS
+   if ( Dens_CGS > Dens_Trans )
+#  endif
 // invoke the nuclear EoS driver
    nuc_eos_C_short( Out, In, NTarget, TargetIdx,
                     EnergyShift, Temp_IG_MeV, NRho, NTorE, NYe, NRho_Mode, NMode, NYe_Mode,
-                    Table[NUC_TAB_ALL], Table[NUC_TAB_ALL_MODE], Table[NUC_TAB_RHO], Table[NUC_TAB_TORE], Table[NUC_TAB_YE],
-                    Table[NUC_TAB_RHO_MODE], Table[NUC_TAB_PRES_MODE], Table[NUC_TAB_YE_MODE],
+                    (real*)Table[NUC_TAB_ALL], (real*)Table[NUC_TAB_ALL_MODE], (real*)Table[NUC_TAB_RHO], (real*)Table[NUC_TAB_TORE], (real*)Table[NUC_TAB_YE],
+                    (real*)Table[NUC_TAB_RHO_MODE], (real*)Table[NUC_TAB_PRES_MODE], (real*)Table[NUC_TAB_YE_MODE],
                     Int_Aux, Int_Main, Mode, &Err, Tolerance );
+
+#  ifdef HELMHOLTZ_EOS
+   else
+   {
+      Helmholtz_eos( Out, In, NTarget, TargetIdx, Temp_IG_MeV, C_Shift, Helm_I, Helm_J,
+                     (double*)Table[NUC_TABLE_HELM], (double*)Table[NUC_TABLE_HELM_DD], (double*)Table[NUC_TABLE_HELM_DT],
+                     (double*)Table[NUC_TABLE_HELM_DENS], (double*)Table[NUC_TABLE_HELM_TEMP],
+                     (double*)Table[NUC_TABLE_HELM_DIFF], (double*)Table[NUC_TABLE_PROG_DENS], (double*)Table[NUC_TABLE_PROG_ABAR],
+                     (double*)Table[NUC_TABLE_PROG_ZBAR], Prog_NBin, Dens_Trans, Dens_Stop, Alpha, NRho, NTorE, NYe,
+                     (real*)Table[NUC_TAB_ALL], (real*)Table[NUC_TAB_RHO], (real*)Table[NUC_TAB_TORE], (real*)Table[NUC_TAB_YE],
+                     Int_Aux, Int_Main, Mode, &Err, Tolerance );
+   }
+#  endif
 
 // trigger a *hard failure* if the EoS driver fails
    if ( Err )   for (int i=0; i<NTarget+1; i++)   Out[i] = NAN;
 
    const real sEint_CGS = Out[0];
-   const real Eint_Code = (  ( sEint_CGS + EnergyShift ) * sEint2Code  ) * Dens_Code;
+   const real Eint_Code = ( sEint_CGS * sEint2Code ) * Dens_Code;
 
 
 // final check
@@ -443,7 +549,7 @@ static real EoS_DensPres2Eint_Nuclear( const real Dens_Code, const real Pres_Cod
 GPU_DEVICE_NOINLINE
 static real EoS_DensPres2CSqr_Nuclear( const real Dens_Code, const real Pres_Code, const real Passive_Code[],
                                        const double AuxArray_Flt[], const int AuxArray_Int[],
-                                       const real *const Table[EOS_NTABLE_MAX] )
+                                       const void *const Table[EOS_NTABLE_MAX] )
 {
 
 // check
@@ -466,6 +572,12 @@ static real EoS_DensPres2CSqr_Nuclear( const real Dens_Code, const real Pres_Cod
 #  if ( NUC_TABLE_MODE == NUC_TABLE_MODE_TEMP )
    const real Kelvin2MeV  = AuxArray_Flt[NUC_AUX_KELVIN2MEV];
 #  endif
+#  ifdef HELMHOLTZ_EOS
+   const real Dens_Trans  = AuxArray_Flt[NUC_AUX_DENS_TRANS];
+   const real Dens_Stop   = AuxArray_Flt[NUC_AUX_DENS_STOP ];
+   const real C_Shift     = AuxArray_Flt[NUC_AUX_CSHIFT    ];
+   const real Alpha       = AuxArray_Flt[NUC_AUX_ALPHA     ];
+#  endif
 
    const int  NRho        = AuxArray_Int[NUC_AUX_NRHO      ];
    const int  NTorE       = AuxArray_Int[NUC_AUX_NTORE     ];
@@ -475,6 +587,11 @@ static real EoS_DensPres2CSqr_Nuclear( const real Dens_Code, const real Pres_Cod
    const int  NYe_Mode    = AuxArray_Int[NUC_AUX_NYE_MODE  ];
    const int  Int_Aux     = AuxArray_Int[NUC_AUX_INT_AUX   ];
    const int  Int_Main    = AuxArray_Int[NUC_AUX_INT_MAIN  ];
+#  ifdef HELMHOLTZ_EOS
+   const int  Helm_I      = AuxArray_Int[NUC_AUX_HELM_I    ];
+   const int  Helm_J      = AuxArray_Int[NUC_AUX_HELM_J    ];
+   const int  Prog_NBin   = AuxArray_Int[NUC_AUX_PROG_NBIN ];
+#  endif
 
 
    int  Mode     = NUC_MODE_PRES;
@@ -500,9 +617,9 @@ static real EoS_DensPres2CSqr_Nuclear( const real Dens_Code, const real Pres_Cod
       printf( "ERROR : EoS overflow (Pres_CGS %13.7e, Pres_Code %13.7e, Pres2CGS %13.7e) in %s() !!\n",
               Pres_CGS, Pres_Code, Pres2CGS, __FUNCTION__ );
 
-   if ( Ye < (real)Table[NUC_TAB_YE][0]  ||  Ye > (real)Table[NUC_TAB_YE][NYe-1] )
+   if ( Ye < ( (real*)Table[NUC_TAB_YE] )[0]  ||  Ye > ( (real*)Table[NUC_TAB_YE] )[NYe-1] )
       printf( "ERROR : invalid Ye = %13.7e (min = %13.7e, max = %13.7e) in %s() !!\n",
-              Ye, Table[NUC_TAB_YE][0], Table[NUC_TAB_YE][NYe-1], __FUNCTION__ );
+              Ye, ( (real*)Table[NUC_TAB_YE] )[0], ( (real*)Table[NUC_TAB_YE] )[NYe-1], __FUNCTION__ );
 #  endif // GAMER_DEBUG
 
 
@@ -514,12 +631,28 @@ static real EoS_DensPres2CSqr_Nuclear( const real Dens_Code, const real Pres_Cod
    In[1] = Pres_CGS;
    In[2] = Ye;
 
+#  ifdef HELMHOLTZ_EOS
+   if ( Dens_CGS > Dens_Trans )
+#  endif
 // invoke the nuclear EoS driver
    nuc_eos_C_short( Out, In, NTarget, TargetIdx,
                     EnergyShift, Temp_IG_MeV, NRho, NTorE, NYe, NRho_Mode, NMode, NYe_Mode,
-                    Table[NUC_TAB_ALL], Table[NUC_TAB_ALL_MODE], Table[NUC_TAB_RHO], Table[NUC_TAB_TORE], Table[NUC_TAB_YE],
-                    Table[NUC_TAB_RHO_MODE], Table[NUC_TAB_PRES_MODE], Table[NUC_TAB_YE_MODE],
+                    (real*)Table[NUC_TAB_ALL], (real*)Table[NUC_TAB_ALL_MODE], (real*)Table[NUC_TAB_RHO], (real*)Table[NUC_TAB_TORE], (real*)Table[NUC_TAB_YE],
+                    (real*)Table[NUC_TAB_RHO_MODE], (real*)Table[NUC_TAB_PRES_MODE], (real*)Table[NUC_TAB_YE_MODE],
                     Int_Aux, Int_Main, Mode, &Err, Tolerance );
+
+#  ifdef HELMHOLTZ_EOS
+   else
+   {
+      Helmholtz_eos( Out, In, NTarget, TargetIdx, Temp_IG_MeV, C_Shift, Helm_I, Helm_J,
+                     (double*)Table[NUC_TABLE_HELM], (double*)Table[NUC_TABLE_HELM_DD], (double*)Table[NUC_TABLE_HELM_DT],
+                     (double*)Table[NUC_TABLE_HELM_DENS], (double*)Table[NUC_TABLE_HELM_TEMP],
+                     (double*)Table[NUC_TABLE_HELM_DIFF], (double*)Table[NUC_TABLE_PROG_DENS], (double*)Table[NUC_TABLE_PROG_ABAR],
+                     (double*)Table[NUC_TABLE_PROG_ZBAR], Prog_NBin, Dens_Trans, Dens_Stop, Alpha, NRho, NTorE, NYe,
+                     (real*)Table[NUC_TAB_ALL], (real*)Table[NUC_TAB_RHO], (real*)Table[NUC_TAB_TORE], (real*)Table[NUC_TAB_YE],
+                     Int_Aux, Int_Main, Mode, &Err, Tolerance );
+   }
+#  endif
 
 // trigger a *hard failure* if the EoS driver fails
    if ( Err )   for (int i=0; i<NTarget+1; i++)   Out[i] = NAN;
@@ -565,7 +698,7 @@ static real EoS_DensPres2CSqr_Nuclear( const real Dens_Code, const real Pres_Cod
 GPU_DEVICE_NOINLINE
 static real EoS_DensEint2Temp_Nuclear( const real Dens_Code, const real Eint_Code, const real Passive_Code[],
                                        const double AuxArray_Flt[], const int AuxArray_Int[],
-                                       const real *const Table[EOS_NTABLE_MAX] )
+                                       const void *const Table[EOS_NTABLE_MAX] )
 {
 
 #  if ( NUC_TABLE_MODE == NUC_TABLE_MODE_TEMP )
@@ -619,7 +752,7 @@ static real EoS_DensEint2Temp_Nuclear( const real Dens_Code, const real Eint_Cod
 GPU_DEVICE_NOINLINE
 static real EoS_DensTemp2Pres_Nuclear( const real Dens_Code, const real Temp_Kelv, const real Passive_Code[],
                                        const double AuxArray_Flt[], const int AuxArray_Int[],
-                                       const real *const Table[EOS_NTABLE_MAX] )
+                                       const void *const Table[EOS_NTABLE_MAX] )
 {
 
    const int  NTarget = 1;
@@ -663,7 +796,7 @@ static real EoS_DensTemp2Pres_Nuclear( const real Dens_Code, const real Temp_Kel
 GPU_DEVICE_NOINLINE
 static real EoS_DensEint2Entr_Nuclear( const real Dens_Code, const real Eint_Code, const real Passive_Code[],
                                        const double AuxArray_Flt[], const int AuxArray_Int[],
-                                       const real *const Table[EOS_NTABLE_MAX] )
+                                       const void *const Table[EOS_NTABLE_MAX] )
 {
 
    const int  NTarget = 1;
@@ -734,7 +867,7 @@ static real EoS_DensEint2Entr_Nuclear( const real Dens_Code, const real Eint_Cod
 GPU_DEVICE_NOINLINE
 static void EoS_General_Nuclear( const int Mode, real Out[], const real In_Flt[], const int In_Int[],
                                  const double AuxArray_Flt[], const int AuxArray_Int[],
-                                 const real *const Table[EOS_NTABLE_MAX] )
+                                 const void *const Table[EOS_NTABLE_MAX] )
 {
 
 // general check
@@ -756,6 +889,12 @@ static void EoS_General_Nuclear( const int Mode, real Out[], const real In_Flt[]
    const real sEint2Code  = AuxArray_Flt[NUC_AUX_VSQR2CODE ];
    const real Kelvin2MeV  = AuxArray_Flt[NUC_AUX_KELVIN2MEV];
    const real MeV2Kelvin  = AuxArray_Flt[NUC_AUX_MEV2KELVIN];
+#  ifdef HELMHOLTZ_EOS
+   const real Dens_Trans  = AuxArray_Flt[NUC_AUX_DENS_TRANS];
+   const real Dens_Stop   = AuxArray_Flt[NUC_AUX_DENS_STOP ];
+   const real C_Shift     = AuxArray_Flt[NUC_AUX_CSHIFT    ];
+   const real Alpha       = AuxArray_Flt[NUC_AUX_ALPHA     ];
+#  endif
 
    const int  NRho        = AuxArray_Int[NUC_AUX_NRHO      ];
    const int  NTorE       = AuxArray_Int[NUC_AUX_NTORE     ];
@@ -765,6 +904,11 @@ static void EoS_General_Nuclear( const int Mode, real Out[], const real In_Flt[]
    const int  NYe_Mode    = AuxArray_Int[NUC_AUX_NYE_MODE  ];
    const int  Int_Aux     = AuxArray_Int[NUC_AUX_INT_AUX   ];
    const int  Int_Main    = AuxArray_Int[NUC_AUX_INT_MAIN  ];
+#  ifdef HELMHOLTZ_EOS
+   const int  Helm_I      = AuxArray_Int[NUC_AUX_HELM_I    ];
+   const int  Helm_J      = AuxArray_Int[NUC_AUX_HELM_J    ];
+   const int  Prog_NBin   = AuxArray_Int[NUC_AUX_PROG_NBIN ];
+#  endif
 
 
    const real Dens_Code = In_Flt[0];
@@ -785,9 +929,9 @@ static void EoS_General_Nuclear( const int Mode, real Out[], const real In_Flt[]
       printf( "ERROR : EoS overflow (Dens_CGS %13.7e, Dens_Code %13.7e, Dens2CGS %13.7e, Mode %d) in %s() !!\n",
               Dens_CGS, Dens_Code, Dens2CGS, Mode, __FUNCTION__ );
 
-   if ( Ye < (real)Table[NUC_TAB_YE][0]  ||  Ye > (real)Table[NUC_TAB_YE][NYe-1] )
+   if ( Ye < ( (real*)Table[NUC_TAB_YE] )[0]  ||  Ye > ( (real*)Table[NUC_TAB_YE] )[NYe-1] )
       printf( "ERROR : invalid Ye = %13.7e (min = %13.7e, max = %13.7e, Mode %d) in %s() !!\n",
-              Ye, Table[NUC_TAB_YE][0], Table[NUC_TAB_YE][NYe-1], Mode, __FUNCTION__ );
+              Ye, ( (real*)Table[NUC_TAB_YE] )[0], ( (real*)Table[NUC_TAB_YE] )[NYe-1], Mode, __FUNCTION__ );
 #  endif // GAMER_DEBUG
 
 
@@ -822,7 +966,7 @@ static void EoS_General_Nuclear( const int Mode, real Out[], const real In_Flt[]
 #        endif // GAMER_DEBUG
 
 
-         real sEint_CGS = ( Eint_Code / Dens_Code ) * sEint2CGS - EnergyShift;
+         real sEint_CGS = ( Eint_Code / Dens_Code ) * sEint2CGS;
 
 //       check floating-point overflow
 #        ifdef GAMER_DEBUG
@@ -928,12 +1072,29 @@ static void EoS_General_Nuclear( const int Mode, real Out[], const real In_Flt[]
    } // switch ( Mode )
 
 
+#  ifdef HELMHOLTZ_EOS
+   if ( Dens_CGS > Dens_Trans )
+#  endif
 // invoke the nuclear EoS driver
    nuc_eos_C_short( Out, TmpIn, NTarget, TargetIdx,
                     EnergyShift, Temp_IG_MeV, NRho, NTorE, NYe, NRho_Mode, NMode, NYe_Mode,
-                    Table[NUC_TAB_ALL], Table[NUC_TAB_ALL_MODE], Table[NUC_TAB_RHO], Table[NUC_TAB_TORE], Table[NUC_TAB_YE],
-                    Table[NUC_TAB_RHO_MODE], Table[TableIdx_Aux], Table[NUC_TAB_YE_MODE],
+                    (real*)Table[NUC_TAB_ALL], (real*)Table[NUC_TAB_ALL_MODE], (real*)Table[NUC_TAB_RHO], (real*)Table[NUC_TAB_TORE], (real*)Table[NUC_TAB_YE],
+                    (real*)Table[NUC_TAB_RHO_MODE], (real*)Table[TableIdx_Aux], (real*)Table[NUC_TAB_YE_MODE],
                     Int_Aux, Int_Main, Mode, &Err, Tolerance );
+
+#  ifdef HELMHOLTZ_EOS
+   else
+   {
+
+      Helmholtz_eos( Out, TmpIn, NTarget, TargetIdx, Temp_IG_MeV, C_Shift, Helm_I, Helm_J,
+                     (double*)Table[NUC_TABLE_HELM], (double*)Table[NUC_TABLE_HELM_DD], (double*)Table[NUC_TABLE_HELM_DT],
+                     (double*)Table[NUC_TABLE_HELM_DENS], (double*)Table[NUC_TABLE_HELM_TEMP],
+                     (double*)Table[NUC_TABLE_HELM_DIFF], (double*)Table[NUC_TABLE_PROG_DENS], (double*)Table[NUC_TABLE_PROG_ABAR],
+                     (double*)Table[NUC_TABLE_PROG_ZBAR], Prog_NBin, Dens_Trans, Dens_Stop, Alpha, NRho, NTorE, NYe,
+                     (real*)Table[NUC_TAB_ALL], (real*)Table[NUC_TAB_RHO], (real*)Table[NUC_TAB_TORE], (real*)Table[NUC_TAB_YE],
+                     Int_Aux, Int_Main, Mode, &Err, Tolerance );
+   }
+#  endif
 
 // trigger a *hard failure* if the EoS driver fails
    if ( Err )   for (int i=0; i<NTarget+1; i++)   Out[i] = NAN;
@@ -981,7 +1142,7 @@ static void EoS_General_Nuclear( const int Mode, real Out[], const real In_Flt[]
          {
 #           if ( NUC_TABLE_MODE == NUC_TABLE_MODE_TEMP )
 
-            Out[i]  = (  ( Out[i] + EnergyShift ) * sEint2Code  ) * Dens_Code;
+            Out[i]  = ( Out[i] * sEint2Code ) * Dens_Code;
 
 #           ifdef GAMER_DEBUG
             if (  Hydro_IsUnphysical_Single( Out[i], "output internal energy density",
@@ -1028,7 +1189,7 @@ static void EoS_General_Nuclear( const int Mode, real Out[], const real In_Flt[]
 
 #  else
 
-   Out[NTarget]  = (  ( Out[NTarget] + EnergyShift ) * sEint2Code  ) * Dens_Code;
+   Out[NTarget]  = ( Out[NTarget] * sEint2Code ) * Dens_Code;
 
 #  ifdef GAMER_DEBUG
    if (  Hydro_IsUnphysical_Single( Out[NTarget], "output internal energy density",
@@ -1170,6 +1331,9 @@ void EoS_Init_Nuclear()
 
 
    nuc_eos_C_ReadTable( NUC_TABLE );
+#  ifdef HELMHOLTZ_EOS
+   Helm_eos_ReadTable( HELM_TABLE );
+#  endif
 
    EoS_SetAuxArray_Nuclear( EoS_AuxArray_Flt, EoS_AuxArray_Int );
    EoS_SetCPUFunc_Nuclear( EoS_DensEint2Pres_CPUPtr, EoS_DensPres2Eint_CPUPtr,

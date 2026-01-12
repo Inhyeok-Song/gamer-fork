@@ -22,7 +22,7 @@ void (*EoS_Init_Ptr)() = NULL;
 
 
 #ifdef GPU
-extern real *d_EoS_Table[EOS_NTABLE_MAX];
+extern void *d_EoS_Table[EOS_NTABLE_MAX];
 #endif
 
 

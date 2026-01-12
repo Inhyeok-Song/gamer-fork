@@ -102,7 +102,7 @@ void EoS_SetAuxArray_Isothermal( double AuxArray_Flt[], int AuxArray_Int[] )
 GPU_DEVICE_NOINLINE
 static real EoS_DensEint2Pres_Isothermal( const real Dens, const real Eint, const real Passive[],
                                           const double AuxArray_Flt[], const int AuxArray_Int[],
-                                          const real *const Table[EOS_NTABLE_MAX] )
+                                          const void *const Table[EOS_NTABLE_MAX] )
 {
 
 // check
@@ -139,7 +139,7 @@ static real EoS_DensEint2Pres_Isothermal( const real Dens, const real Eint, cons
 GPU_DEVICE_NOINLINE
 static real EoS_DensPres2Eint_Isothermal( const real Dens, const real Pres, const real Passive[],
                                           const double AuxArray_Flt[], const int AuxArray_Int[],
-                                          const real *const Table[EOS_NTABLE_MAX] )
+                                          const void *const Table[EOS_NTABLE_MAX] )
 {
 
 // check
@@ -175,7 +175,7 @@ static real EoS_DensPres2Eint_Isothermal( const real Dens, const real Pres, cons
 GPU_DEVICE_NOINLINE
 static real EoS_DensPres2CSqr_Isothermal( const real Dens, const real Pres, const real Passive[],
                                           const double AuxArray_Flt[], const int AuxArray_Int[],
-                                          const real *const Table[EOS_NTABLE_MAX] )
+                                          const void *const Table[EOS_NTABLE_MAX] )
 {
 
 // check
@@ -211,7 +211,7 @@ static real EoS_DensPres2CSqr_Isothermal( const real Dens, const real Pres, cons
 GPU_DEVICE_NOINLINE
 static real EoS_DensEint2Temp_Isothermal( const real Dens, const real Eint, const real Passive[],
                                           const double AuxArray_Flt[], const int AuxArray_Int[],
-                                          const real *const Table[EOS_NTABLE_MAX] )
+                                          const void *const Table[EOS_NTABLE_MAX] )
 {
 
 // check
@@ -246,7 +246,7 @@ static real EoS_DensEint2Temp_Isothermal( const real Dens, const real Eint, cons
 GPU_DEVICE_NOINLINE
 static real EoS_DensTemp2Pres_Isothermal( const real Dens, const real Temp, const real Passive[],
                                           const double AuxArray_Flt[], const int AuxArray_Int[],
-                                          const real *const Table[EOS_NTABLE_MAX] )
+                                          const void *const Table[EOS_NTABLE_MAX] )
 {
 
 // check
@@ -283,7 +283,7 @@ static real EoS_DensTemp2Pres_Isothermal( const real Dens, const real Temp, cons
 GPU_DEVICE_NOINLINE
 static real EoS_DensEint2Entr_Isothermal( const real Dens, const real Eint, const real Passive[],
                                           const double AuxArray_Flt[], const int AuxArray_Int[],
-                                          const real *const Table[EOS_NTABLE_MAX] )
+                                          const void *const Table[EOS_NTABLE_MAX] )
 {
 
 // EoS_DensEint2Entr is NOT supported yet for isothermal EoS
@@ -312,7 +312,7 @@ static real EoS_DensEint2Entr_Isothermal( const real Dens, const real Eint, cons
 GPU_DEVICE_NOINLINE
 static void EoS_General_Isothermal( const int Mode, real Out[], const real In_Flt[], const int In_Int[],
                                     const double AuxArray_Flt[], const int AuxArray_Int[],
-                                    const real *const Table[EOS_NTABLE_MAX] )
+                                    const void *const Table[EOS_NTABLE_MAX] )
 {
 
 // not used by this EoS

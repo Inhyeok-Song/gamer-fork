@@ -96,7 +96,7 @@ void EoS_SetAuxArray_Gamma( double AuxArray_Flt[], int AuxArray_Int[] )
 GPU_DEVICE_NOINLINE
 static real EoS_DensEint2Pres_Gamma( const real Dens, const real Eint, const real Passive[],
                                      const double AuxArray_Flt[], const int AuxArray_Int[],
-                                     const real *const Table[EOS_NTABLE_MAX] )
+                                     const void *const Table[EOS_NTABLE_MAX] )
 {
 
 // check
@@ -136,7 +136,7 @@ static real EoS_DensEint2Pres_Gamma( const real Dens, const real Eint, const rea
 GPU_DEVICE_NOINLINE
 static real EoS_DensPres2Eint_Gamma( const real Dens, const real Pres, const real Passive[],
                                      const double AuxArray_Flt[], const int AuxArray_Int[],
-                                     const real *const Table[EOS_NTABLE_MAX] )
+                                     const void *const Table[EOS_NTABLE_MAX] )
 {
 
 // check
@@ -176,7 +176,7 @@ static real EoS_DensPres2Eint_Gamma( const real Dens, const real Pres, const rea
 GPU_DEVICE_NOINLINE
 static real EoS_DensPres2CSqr_Gamma( const real Dens, const real Pres, const real Passive[],
                                      const double AuxArray_Flt[], const int AuxArray_Int[],
-                                     const real *const Table[EOS_NTABLE_MAX] )
+                                     const void *const Table[EOS_NTABLE_MAX] )
 {
 
 // check
@@ -218,7 +218,7 @@ static real EoS_DensPres2CSqr_Gamma( const real Dens, const real Pres, const rea
 GPU_DEVICE_NOINLINE
 static real EoS_DensEint2Temp_Gamma( const real Dens, const real Eint, const real Passive[],
                                      const double AuxArray_Flt[], const int AuxArray_Int[],
-                                     const real *const Table[EOS_NTABLE_MAX] )
+                                     const void *const Table[EOS_NTABLE_MAX] )
 {
 
 // check
@@ -261,7 +261,7 @@ static real EoS_DensEint2Temp_Gamma( const real Dens, const real Eint, const rea
 GPU_DEVICE_NOINLINE
 static real EoS_DensTemp2Pres_Gamma( const real Dens, const real Temp, const real Passive[],
                                      const double AuxArray_Flt[], const int AuxArray_Int[],
-                                     const real *const Table[EOS_NTABLE_MAX] )
+                                     const void *const Table[EOS_NTABLE_MAX] )
 {
 
 // check
@@ -302,7 +302,7 @@ static real EoS_DensTemp2Pres_Gamma( const real Dens, const real Temp, const rea
 GPU_DEVICE_NOINLINE
 static real EoS_DensEint2Entr_Gamma( const real Dens, const real Eint, const real Passive[],
                                      const double AuxArray_Flt[], const int AuxArray_Int[],
-                                     const real *const Table[EOS_NTABLE_MAX] )
+                                     const void *const Table[EOS_NTABLE_MAX] )
 {
 
 // check
@@ -345,7 +345,7 @@ static real EoS_DensEint2Entr_Gamma( const real Dens, const real Eint, const rea
 GPU_DEVICE_NOINLINE
 static void EoS_General_Gamma( const int Mode, real Out[], const real In_Flt[], const int In_Int[],
                                const double AuxArray_Flt[], const int AuxArray_Int[],
-                               const real *const Table[EOS_NTABLE_MAX] )
+                               const void *const Table[EOS_NTABLE_MAX] )
 {
 
 // not used by this EoS

@@ -344,6 +344,9 @@ extern EoS_t EoS;
 extern char NUC_TABLE[MAX_STRING];
 extern Nuc_IntScheme_t NUC_INT_SCHEME_AUX;
 extern Nuc_IntScheme_t NUC_INT_SCHEME_MAIN;
+#ifdef HELMHOLTZ_EOS
+extern char HELM_TABLE[MAX_STRING];
+#endif
 #endif
 #endif // HYDRO
 
@@ -483,7 +486,7 @@ extern real       (*h_Mag_Array_T[2])[NCOMP_MAG][ PS1P1*SQR(PS1) ];
 #endif
 
 #if ( MODEL == HYDRO )
-extern real        *h_EoS_Table[EOS_NTABLE_MAX];
+extern void        *h_EoS_Table[EOS_NTABLE_MAX];
 #endif
 
 extern real       (*h_Flu_Array_S_In [2])[FLU_NIN_S ][ CUBE(SRC_NXT)           ];

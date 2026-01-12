@@ -17,7 +17,7 @@ extern int g_ntemp;
 extern int g_neps;
 #endif
 
-extern real *d_EoS_Table[EOS_NTABLE_MAX];
+extern void *d_EoS_Table[EOS_NTABLE_MAX];
 
 
 

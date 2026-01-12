@@ -5,7 +5,7 @@
 #if ( defined GPU  &&  MODEL == HYDRO  &&  EOS == EOS_NUCLEAR )
 
 
-extern real *d_EoS_Table[EOS_NTABLE_MAX];
+extern void *d_EoS_Table[EOS_NTABLE_MAX];
 
 
 

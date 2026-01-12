@@ -78,13 +78,17 @@ void Src_Leakage_ComputeTau( Profile_t *Ray[], double *Edge,
 #  endif
 
 #  if ( NUC_TABLE_MODE == NUC_TABLE_MODE_TEMP )
-   const real   EoS_TempMin_Kelv = POW( (real)10.0, h_EoS_Table[NUC_TAB_TORE     ][0] ) / Kelvin2MeV;
+   const real   EoS_TempMin_Kelv = POW( (real)10.0, ( (real*)h_EoS_Table[NUC_TAB_TORE     ] )[0] ) / Kelvin2MeV;
 #  else
-   const real   EoS_TempMin_Kelv = POW( (real)10.0, h_EoS_Table[NUC_TAB_EORT_MODE][0] ) / Kelvin2MeV;
+   const real   EoS_TempMin_Kelv = POW( (real)10.0, ( (real*)h_EoS_Table[NUC_TAB_EORT_MODE] )[0] ) / Kelvin2MeV;
 #  endif
 
+#  ifndef HELMHOLTZ_EOS
 #  ifdef LEAKAGE_PROF_CORR
    const real   Dens_CorrThresh_Code = 1.0e3 / UNIT_D;
+#  endif
+#  else
+   const real   Dens_CorrThresh_Code = (real)EoS.Helm_Dens_Trans / UNIT_D;
 #  endif
 
    const bool   NuHeat     = SrcTerms.Leakage_NuHeat;
