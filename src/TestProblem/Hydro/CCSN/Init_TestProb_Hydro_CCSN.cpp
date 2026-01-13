@@ -257,7 +257,7 @@ void SetParameter()
                             CCSN_TargetCols[0] =  0;  CCSN_TargetCols[1] =  1;  CCSN_TargetCols[2] =  2;  CCSN_TargetCols[3] =  3;
                             CCSN_TargetCols[4] =  4;  CCSN_TargetCols[5] =  5;  CCSN_TargetCols[6] =  6;
                             CCSN_ColIdx_R      =  0;  CCSN_ColIdx_Dens   =  1;  CCSN_ColIdx_Pres   =  5;  CCSN_ColIdx_Velr   =  3;
-                            CCSN_ColIdx_Ye     =  4;  CCSN_ColIdx_Temp   =  2;  CCSN_ColIdx_Omega  =  6;
+                            CCSN_ColIdx_Ye     =  4;  CCSN_ColIdx_Temp   =  2;  CCSN_ColIdx_Omega  =  8;
                             sprintf( CCSN_Name, "Core collapse test" );
                             break;
 

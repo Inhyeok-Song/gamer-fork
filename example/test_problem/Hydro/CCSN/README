@@ -5,6 +5,7 @@ Disable: UNSPLIT_GRAVITY
 
 EOS    : EOS_GAMMA    (GREP migration test)
          EOS_NUCLEAR  (Post bounce test, Core collapse test and Lightbulb test)
+         EOS_NUCLEAR + HELMHOLTZ_EOS (Core collapse test with Hybrid EoS)
 
 Default setup:
 ========================================

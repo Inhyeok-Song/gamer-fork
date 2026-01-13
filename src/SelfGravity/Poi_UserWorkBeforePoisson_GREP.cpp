@@ -6,6 +6,10 @@ static void GREP_Compute_Profile( const int lv, const int Sg, const PatchType_t 
 static void GREP_Combine_Profile( Profile_t *Prof[][2], const int lv, const int Sg, const double PrepTime,
                                   const bool RemoveEmpty );
 static void GREP_Check_Profile( const int lv, Profile_t *Prof[], const int NProf );
+#ifdef HELMHOLTZ_EOS
+static double linterp_2D_table( const double x, const double y, const double *table,
+                                const int nx, const int ny, const real *xt, const real *yt );
+#endif
 
 extern void SetExtPotAuxArray_GREP( double AuxArray_Flt[], int AuxArray_Int[], const double Time );
 extern void SetTempIntPara( const int lv, const int Sg_Current, const double PrepTime, const double Time0, const double Time1,
@@ -20,6 +24,8 @@ Profile_t *GREP_DensAve [NLEVEL+1][2];
 Profile_t *GREP_EngyAve [NLEVEL+1][2];
 Profile_t *GREP_VrAve   [NLEVEL+1][2];
 Profile_t *GREP_PresAve [NLEVEL+1][2];
+Profile_t *GREP_TempAve [NLEVEL+1][2];
+Profile_t *GREP_YeAve   [NLEVEL+1][2];
 Profile_t *GREP_EffPot  [NLEVEL  ][2];
 
 int    GREP_LvUpdate;
@@ -29,6 +35,13 @@ double GREP_SgTime [NLEVEL][2];
 extern bool CCSN_Is_PostBounce;
 extern real *h_ExtPotGREP;
 
+#ifdef HELMHOLTZ_EOS
+extern double *g_helm_diff;
+extern int     g_ntemp;
+extern int     g_nye;
+extern real   *g_logtemp;
+extern real   *g_yes;
+#endif
 
 
 //-------------------------------------------------------------------------------------------------------
@@ -274,6 +287,8 @@ void Poi_Prepare_GREP( const double Time, const int lv )
    GREP_Combine_Profile( GREP_VrAve,   lv, Sg, Time, RemoveEmpty_Yes );
    GREP_Combine_Profile( GREP_PresAve, lv, Sg, Time, RemoveEmpty_Yes );
    GREP_Combine_Profile( GREP_EngyAve, lv, Sg, Time, RemoveEmpty_Yes );
+   GREP_Combine_Profile( GREP_TempAve, lv, Sg, Time, RemoveEmpty_Yes );
+   GREP_Combine_Profile( GREP_YeAve,   lv, Sg, Time, RemoveEmpty_Yes );
 
 
 // compute the pressure if GREP_OPT_PRES == GREP_PRES_BINDATA
@@ -281,6 +296,8 @@ void Poi_Prepare_GREP( const double Time, const int lv )
    Profile_t *Vr_Tot   = GREP_VrAve  [NLEVEL][Sg];
    Profile_t *Pres_Tot = GREP_PresAve[NLEVEL][Sg];
    Profile_t *Engy_Tot = GREP_EngyAve[NLEVEL][Sg];
+   Profile_t *Temp_Tot = GREP_TempAve[NLEVEL][Sg];
+   Profile_t *Ye_Tot   = GREP_YeAve  [NLEVEL][Sg];
 
 //###REVISE: support EOS != EOS_NUCLEAR, especially for EoS that does not need any passive scalar in EoS_DensEint2Pres_CPUPtr()
    if ( GREP_OPT_PRES == GREP_PRES_BINDATA )
@@ -292,13 +309,10 @@ void Poi_Prepare_GREP( const double Time, const int lv )
       {
          if ( Dens_Tot->NCell[b] == 0 )   continue;
 
-//       the Ye profile has been stored in the pressure profile temporarily
-         Passive[ YE - NCOMP_FLUID ] = Pres_Tot->Data[b];
+         Passive[ YE - NCOMP_FLUID ] = Ye_Tot->Data[b];
 
 #        ifdef TEMP_IG
-//       set the initial guess of temperature to 1 MeV
-//###REVISE: support Temp_IG from Aux_ComputeProfile()
-         Passive[ TEMP_IG - NCOMP_FLUID ] = 1.0e6 / Const_kB_eV;
+         Passive[ TEMP_IG - NCOMP_FLUID ] = Temp_Tot->Data[b];
 #        endif
 
          Pres_Tot->Data[b] = EoS_DensEint2Pres_CPUPtr( Dens_Tot->Data[b], Engy_Tot->Data[b],
@@ -313,15 +327,50 @@ void Poi_Prepare_GREP( const double Time, const int lv )
    const real sEint2CGS        = EoS_AuxArray_Flt[NUC_AUX_VSQR2CGS];
    const real EnergyShift_Code = EoS_AuxArray_Flt[NUC_AUX_ESHIFT  ] / sEint2CGS;
 
+#  ifdef HELMHOLTZ_EOS
+   const real Dens2CGS              = EoS_AuxArray_Flt[NUC_AUX_DENS2CGS  ];
+   const real Kelvin2MeV            = EoS_AuxArray_Flt[NUC_AUX_KELVIN2MEV];
+   const real DensTrans             = EoS_AuxArray_Flt[NUC_AUX_DENS_TRANS];
+   const real DensStop              = EoS_AuxArray_Flt[NUC_AUX_DENS_STOP ];
+   const real EnergyShiftHelm_Code  = EoS_AuxArray_Flt[NUC_AUX_CSHIFT    ] / sEint2CGS;
+   const real HelmAlpha             = EoS_AuxArray_Flt[NUC_AUX_ALPHA     ];
+         real EnergyShiftTrans_Code = NULL_REAL;
+
+   for (int b=0; b<Engy_Tot->NBin; b++)
+   {
+      real Dens_CGS = Dens_Tot->Data[b] * Dens2CGS;
+
+      if      ( Dens_CGS > DensTrans )
+      {
+         Engy_Tot->Data[b] -= EnergyShift_Code * Dens_Tot->Data[b];
+      }
+      else if (  ( Dens_CGS <= DensTrans )  &&
+                 ( Dens_CGS >  DensTrans )  )
+      {
+         const double ye = Ye_Tot->Data[b] / Dens_Tot->Data[b];
+         const double lt = log10( Temp_Tot->Data[b] * Kelvin2MeV );
+               double diff_shift = linterp_2D_table( lt, ye, g_helm_diff, g_ntemp, g_nye, g_logtemp, g_yes );
+
+         EnergyShiftTrans_Code = diff_shift * EXP(  ( log10(Dens_CGS) - log10(DensTrans) ) / HelmAlpha  ) + EnergyShiftHelm_Code;
+         Engy_Tot->Data[b] -= EnergyShiftTrans_Code * Dens_Tot->Data[b];
+      }
+      else if ( Dens_CGS <= DensStop )
+      {
+         Engy_Tot->Data[b] -= EnergyShiftHelm_Code * Dens_Tot->Data[b];
+      }
+   }
+
+#  else
    for (int b=0; b<Engy_Tot->NBin; b++)
       Engy_Tot->Data[b] -= EnergyShift_Code * Dens_Tot->Data[b];
-#  endif
+#  endif // #ifdef HELMHOTLZ_EOS ... else ...
+#  endif // #if ( EOS == EOS_NUCLEAR )
 
 
 // check the profiles before computing the effective GR potential
-   Profile_t *GREP_Check_List[] = { Dens_Tot, Engy_Tot, Vr_Tot, Pres_Tot };
+   Profile_t *GREP_Check_List[] = { Dens_Tot, Engy_Tot, Vr_Tot, Pres_Tot, Temp_Tot, Ye_Tot };
 
-   GREP_Check_Profile( lv, GREP_Check_List, 4 );
+   GREP_Check_Profile( lv, GREP_Check_List, 6 );
 
 
 // compute the effective GR potential
@@ -364,16 +413,18 @@ void GREP_Compute_Profile( const int lv, const int Sg, const PatchType_t PatchTy
 
    const bool   RemoveEmpty_No = false;
    const double PrepTime_No    = -1.0;
-   const int    NVar           = 4;
+   const int    NVar           = 6;
    const int    Lv_Stored      = ( PatchType == PATCH_LEAF ) ? lv : NLEVEL;
 
    Profile_t *Dens = GREP_DensAve[Lv_Stored][Sg];
    Profile_t *Vr   = GREP_VrAve  [Lv_Stored][Sg];
    Profile_t *Engy = GREP_EngyAve[Lv_Stored][Sg];
    Profile_t *Pres = GREP_PresAve[Lv_Stored][Sg];
+   Profile_t *Temp = GREP_TempAve[Lv_Stored][Sg];
+   Profile_t *Ye   = GREP_YeAve  [Lv_Stored][Sg];
 
-   Profile_t *Prof_List[] = {  Dens,    Vr,  Engy,  Pres };
-   long       TVar     [] = { _DENS, _VELR, _EINT, _NONE };
+   Profile_t *Prof_List[] = {  Dens,    Vr,  Engy,  Pres,  Temp,  Ye };
+   long       TVar     [] = { _DENS, _VELR, _EINT, _PRES, _TEMP, _YE };
 
    switch ( GREP_OPT_PRES )
    {
@@ -564,14 +615,15 @@ void GREP_Check_Profile( const int lv, Profile_t *Prof[], const int NProf )
             fprintf( File, "# LogBinRatio        : %13.7e\n",               Prof[0]->LogBinRatio );
             fprintf( File, "# NBin               : %d\n",                   NBin );
             fprintf( File, "# -----------------------------------------------\n" );
-            fprintf( File, "%5s %9s %22s %22s %22s %22s %22s\n",
-                           "# Bin", "NCell", "Radius", "Density", "Energy", "Vr", "Pressure" );
+            fprintf( File, "%5s %9s %22s %22s %22s %22s %22s %22s %22s\n",
+                           "# Bin", "NCell", "Radius", "Density", "Energy", "Vr", "Pressure", "Temperature", "Ye" );
 
 //          data
             for (int i=0; i<NBin; i++)
-            fprintf( File, "%5d %9ld %22.15e %22.15e %22.15e %22.15e %22.15e\n",
+            fprintf( File, "%5d %9ld %22.15e %22.15e %22.15e %22.15e %22.15e %22.15e %22.15e\n",
                            i, Prof[0]->NCell[i], Prof[0]->Radius[i],
-                           Prof[0]->Data[i], Prof[1]->Data[i], Prof[2]->Data[i], Prof[3]->Data[i] );
+                           Prof[0]->Data[i], Prof[1]->Data[i], Prof[2]->Data[i], Prof[3]->Data[i],
+                           Prof[4]->Data[i], Prof[5]->Data[i] );
 
             fclose( File );
 
@@ -582,3 +634,61 @@ void GREP_Check_Profile( const int lv, Profile_t *Prof[], const int NProf )
    } // if ( MPI_Rank == 0 )
 
 } // FUNCTION : GREP_Check_Profile
+
+
+
+#ifdef HELMHOLTZ_EOS
+double linterp_2D_table( const double x, const double y, const double *table,
+                         const int nx, const int ny, const real *xt, const real *yt )
+{
+
+// helper variables
+   int  ix, iy;
+   double a[4], fh[4];
+
+
+// determine spacing parameters of equidistant (!!!) table
+   const double dx = ( xt[nx-1] - xt[0] ) / (double)(nx-1);
+   const double dy = ( yt[ny-1] - yt[0] ) / (double)(ny-1);
+
+   const double dxi   = (double)1.0 / dx;
+   const double dyi   = (double)1.0 / dy;
+
+   const double dxyi  = dxi*dyi;
+
+
+// determine location in table
+   ix = 1 + (int)( ( x - xt[0] )*dxi );
+   iy = 1 + (int)( ( y - yt[0] )*dyi );
+
+   ix = MAX(  1, MIN( ix, nx-1 )  );
+   iy = MAX(  1, MIN( iy, ny-1 )  );
+
+
+// set up aux vars for interpolation
+   const double delx = xt[ix] - x;
+   const double dely = yt[iy] - y;
+
+
+   const int idx  = ix + nx*iy;
+
+//    set up aux vars for interpolation assuming array ordering (ix, iy)
+   fh[0] = table[ idx          ]; // ( ix  , iy   )
+   fh[1] = table[ idx - 1      ]; // ( ix-1, iy   )
+   fh[2] = table[ idx     - nx ]; // ( ix  , iy-1 )
+   fh[3] = table[ idx - 1 - nx ]; // ( ix-1, iy-1 )
+
+   a[0] = fh[0];
+   a[1] = dxi  * ( fh[1] - fh[0] );
+   a[2] = dyi  * ( fh[2] - fh[0] );
+   a[3] = dxyi * ( fh[0] - fh[1] - fh[2] + fh [3] );
+
+   double e_shift = a[0]
+                  + a[1] * delx
+                  + a[2] * dely
+                  + a[3] * delx*dely;
+
+
+   return e_shift;
+} // FUNCTION : linterp_2D_table
+#endif

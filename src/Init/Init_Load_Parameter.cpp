@@ -330,6 +330,15 @@ void Init_Load_Parameter()
    ReadPara->Add( "NUC_TABLE",                   NUC_TABLE,                       Useless_str,     Useless_str,   Useless_str    );
    ReadPara->Add( "NUC_INT_SCHEME_AUX",         &NUC_INT_SCHEME_AUX,              1,               1,             2              );
    ReadPara->Add( "NUC_INT_SCHEME_MAIN",        &NUC_INT_SCHEME_MAIN,             1,               1,             2              );
+#  ifdef HELMHOLTZ_EOS
+   ReadPara->Add( "HELM_TABLE",                  HELM_TABLE,                      Useless_str,     Useless_str,   Useless_str    );
+   ReadPara->Add( "HELM_IC_FILE",                EoS.Helm_IC_File,                Useless_str,     Useless_str,   Useless_str    );
+   ReadPara->Add( "HELM_IMAX",                  &EoS.Helm_Imax,                   541,             NoMin_int,     NoMax_int      );
+   ReadPara->Add( "HELM_JMAX",                  &EoS.Helm_Jmax,                   201,             NoMin_int,     NoMax_int      );
+   ReadPara->Add( "HELM_DENS_TRANS",            &EoS.Helm_Dens_Trans,             5.0e5,           0.0,           NoMax_double   );
+   ReadPara->Add( "HELM_DENS_STOP",             &EoS.Helm_Dens_Stop,              1.0e5,           0.0,           NoMax_double   );
+   ReadPara->Add( "HELM_DECREASE",              &EoS.Helm_Decrease,               1.0e-2,          0.0,           NoMax_double   );
+#  endif
 #  endif
    ReadPara->Add( "MINMOD_COEFF",               &MINMOD_COEFF,                    1.5,             1.0,           2.0            );
    ReadPara->Add( "MINMOD_MAX_ITER",            &MINMOD_MAX_ITER,                   0,               0,           NoMax_int      );

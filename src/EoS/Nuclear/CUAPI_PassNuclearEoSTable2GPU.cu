@@ -17,6 +17,12 @@ extern int g_ntemp;
 extern int g_neps;
 #endif
 
+#ifdef HELMHOLTZ_EOS
+extern int g_helm_imax;
+extern int g_helm_jmax;
+extern int g_prog_nbin;
+#endif
+
 extern void *d_EoS_Table[EOS_NTABLE_MAX];
 
 
@@ -45,16 +51,27 @@ void CUAPI_PassNuclearEoSTable2GPU()
    int  n_def_mode = g_neps;
 #  endif
 
-   EoS_TableSize[NUC_TAB_ALL      ] = sizeof(real)*g_nrho*n_def_mode*g_nye*NUC_TABLE_NVAR;
-   EoS_TableSize[NUC_TAB_ALL_MODE ] = sizeof(real)*g_nrho_mode*g_nmode*g_nye_mode*3;
-   EoS_TableSize[NUC_TAB_RHO      ] = sizeof(real)*g_nrho;
-   EoS_TableSize[NUC_TAB_TORE     ] = sizeof(real)*n_def_mode;
-   EoS_TableSize[NUC_TAB_YE       ] = sizeof(real)*g_nye;
-   EoS_TableSize[NUC_TAB_RHO_MODE ] = sizeof(real)*g_nrho_mode;
-   EoS_TableSize[NUC_TAB_EORT_MODE] = sizeof(real)*g_nmode;
-   EoS_TableSize[NUC_TAB_ENTR_MODE] = sizeof(real)*g_nmode;
-   EoS_TableSize[NUC_TAB_PRES_MODE] = sizeof(real)*g_nmode;
-   EoS_TableSize[NUC_TAB_YE_MODE  ] = sizeof(real)*g_nye_mode;
+   EoS_TableSize[NUC_TAB_ALL        ] = sizeof(real  )*g_nrho*n_def_mode*g_nye*NUC_TABLE_NVAR;
+   EoS_TableSize[NUC_TAB_ALL_MODE   ] = sizeof(real  )*g_nrho_mode*g_nmode*g_nye_mode*3;
+   EoS_TableSize[NUC_TAB_RHO        ] = sizeof(real  )*g_nrho;
+   EoS_TableSize[NUC_TAB_TORE       ] = sizeof(real  )*n_def_mode;
+   EoS_TableSize[NUC_TAB_YE         ] = sizeof(real  )*g_nye;
+   EoS_TableSize[NUC_TAB_RHO_MODE   ] = sizeof(real  )*g_nrho_mode;
+   EoS_TableSize[NUC_TAB_EORT_MODE  ] = sizeof(real  )*g_nmode;
+   EoS_TableSize[NUC_TAB_ENTR_MODE  ] = sizeof(real  )*g_nmode;
+   EoS_TableSize[NUC_TAB_PRES_MODE  ] = sizeof(real  )*g_nmode;
+   EoS_TableSize[NUC_TAB_YE_MODE    ] = sizeof(real  )*g_nye_mode;
+#  ifdef HELMHOLTZ_EOS
+   EoS_TableSize[NUC_TABLE_HELM     ] = sizeof(double)*g_helm_imax*g_helm_jmax*HELM_TABLE_NVAR;
+   EoS_TableSize[NUC_TABLE_HELM_DD  ] = sizeof(double)*(g_helm_imax-1)*5;
+   EoS_TableSize[NUC_TABLE_HELM_DT  ] = sizeof(double)*(g_helm_jmax-1)*5;
+   EoS_TableSize[NUC_TABLE_HELM_DENS] = sizeof(double)*g_helm_imax;
+   EoS_TableSize[NUC_TABLE_HELM_TEMP] = sizeof(double)*g_helm_jmax;
+   EoS_TableSize[NUC_TABLE_HELM_DIFF] = sizeof(double)*g_ntemp*g_nye;
+   EoS_TableSize[NUC_TABLE_PROG_DENS] = sizeof(double)*g_prog_nbin;
+   EoS_TableSize[NUC_TABLE_PROG_ABAR] = sizeof(double)*g_prog_nbin;
+   EoS_TableSize[NUC_TABLE_PROG_ZBAR] = sizeof(double)*g_prog_nbin;
+#  endif
 
    if ( MPI_Rank == 0 )
    {

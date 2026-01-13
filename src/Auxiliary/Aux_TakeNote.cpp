@@ -200,6 +200,11 @@ void Aux_TakeNote()
       fprintf( Note, "EOS                             EOS_NUCLEAR\n" );
 #     if   ( NUC_TABLE_MODE == NUC_TABLE_MODE_TEMP )
       fprintf( Note, "NUC_TABLE_MODE                  NUC_TABLE_MODE_TEMP\n" );
+#     ifdef HELMHOLTZ_EOS
+      fprintf( Note, "HELMHOLTZ_EOS                   ON\n" );
+#     else
+      fprintf( Note, "HELMHOLTZ_EOS                   OFF\n" );
+#     endif
 #     elif ( NUC_TABLE_MODE == NUC_TABLE_MODE_ENGY )
       fprintf( Note, "NUC_TABLE_MODE                  NUC_TABLE_MODE_ENGY\n" );
 #     else
@@ -1271,6 +1276,15 @@ void Aux_TakeNote()
       fprintf( Note, "NUC_INT_SCHEME_MAIN             %s\n",      ( NUC_INT_SCHEME_MAIN == NUC_INT_LINEAR ) ? "LINEAR" :
                                                                   ( NUC_INT_SCHEME_MAIN == NUC_INT_CUBIC  ) ? "CUBIC"  :
                                                                                                               "UNKNOWN" );
+#     ifdef HELMHOLTZ_EOS
+      fprintf( Note, "HELM_TABLE                      %s\n",      HELM_TABLE              );
+      fprintf( Note, "HELM_IC_FILE                    %s\n",      EoS.Helm_IC_File        );
+      fprintf( Note, "HELM_IMAX                       %d\n",      EoS.Helm_Imax           );
+      fprintf( Note, "HELM_JMAX                       %d\n",      EoS.Helm_Jmax           );
+      fprintf( Note, "HELM_DENS_TRANS                 %13.7e\n",  EoS.Helm_Dens_Trans     );
+      fprintf( Note, "HELM_DENS_STOP                  %13.7e\n",  EoS.Helm_Dens_Stop      );
+      fprintf( Note, "HELM_DECREASE                   %13.7e\n",  EoS.Helm_Decrease       );
+#     endif
 #     endif
       fprintf( Note, "MINMOD_COEFF                   % 14.7e\n",  MINMOD_COEFF            );
       fprintf( Note, "MINMOD_MAX_ITER                % d\n",      MINMOD_MAX_ITER         );
