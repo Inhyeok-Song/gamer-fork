@@ -26,7 +26,7 @@ void CUAPI_SetConstMemory_EoS()
 // copy data to constant memory
    CUDA_CHECK_ERROR(  cudaMemcpyToSymbol( c_EoS_AuxArray_Flt, EoS_AuxArray_Flt, EOS_NAUX_MAX  *sizeof(double) )  );
    CUDA_CHECK_ERROR(  cudaMemcpyToSymbol( c_EoS_AuxArray_Int, EoS_AuxArray_Int, EOS_NAUX_MAX  *sizeof(int   ) )  );
-   CUDA_CHECK_ERROR(  cudaMemcpyToSymbol( c_EoS_Table,        d_EoS_Table,      EOS_NTABLE_MAX*sizeof(real* ) )  );
+   CUDA_CHECK_ERROR(  cudaMemcpyToSymbol( c_EoS_Table,        d_EoS_Table,      EOS_NTABLE_MAX*sizeof(void* ) )  );
 
 // obtain the constant-memory pointers
    CUDA_CHECK_ERROR(  cudaGetSymbolAddress( (void **)&EoS.AuxArrayDevPtr_Flt, c_EoS_AuxArray_Flt )   );

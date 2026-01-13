@@ -65,7 +65,7 @@ struct Hydro_HTildeFunction_params_s{
    EoS_H2TEM_t EoS_HTilde2Temp;     // EoS routine to compute the temperature
    const double *EoS_AuxArray_Flt;  // Auxiliary arrays for EoS_HTilde2Temp
    const int *EoS_AuxArray_Int;     // Auxiliary arrays for EoS_HTilde2Temp
-   const real *const *EoS_Table;    // EoS tables for EoS_HTilde2Temp
+   const void *const *EoS_Table;    // EoS tables for EoS_HTilde2Temp
 };
 GPU_DEVICE
 static void Hydro_HTildeFunction( real HTilde, void *params, real *Func, real *DiffFunc );
@@ -624,7 +624,7 @@ void Hydro_HTildeFunction( real HTilde, void *Params, real *Func, real *DiffFunc
    const EoS_H2TEM_t  EoS_HTilde2Temp  = parameters->EoS_HTilde2Temp;
    const double      *EoS_AuxArray_Flt = parameters->EoS_AuxArray_Flt;
    const int         *EoS_AuxArray_Int = parameters->EoS_AuxArray_Int;
-   const real *const *EoS_Table        = parameters->EoS_Table;
+   const void *const *EoS_Table        = parameters->EoS_Table;
    real Temp                           = parameters->Temp;
    real DiffTemp;
 

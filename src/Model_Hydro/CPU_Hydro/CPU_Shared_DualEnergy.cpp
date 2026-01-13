@@ -145,7 +145,7 @@ void Hydro_DualEnergyFix( const real Dens, const real MomX, const real MomY, con
 //-------------------------------------------------------------------------------------------------------
 real Hydro_Con2Dual( const real Dens, const real MomX, const real MomY, const real MomZ, const real Engy,
                      const real Emag, const EoS_DE2P_t EoS_DensEint2Pres, const double EoS_AuxArray_Flt[],
-                     const int EoS_AuxArray_Int[], const real *const EoS_Table[EOS_NTABLE_MAX],
+                     const int EoS_AuxArray_Int[], const void *const EoS_Table[EOS_NTABLE_MAX],
                      const long PassiveFloor )
 {
 

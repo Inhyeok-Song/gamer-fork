@@ -11,7 +11,7 @@
 #if ( MODEL == HYDRO )
 SET_GLOBAL( __constant__ double c_EoS_AuxArray_Flt[EOS_NAUX_MAX  ] );
 SET_GLOBAL( __constant__ int    c_EoS_AuxArray_Int[EOS_NAUX_MAX  ] );
-SET_GLOBAL( __constant__ real*  c_EoS_Table       [EOS_NTABLE_MAX] );
+SET_GLOBAL( __constant__ void*  c_EoS_Table       [EOS_NTABLE_MAX] );
 #endif
 
 #if ( NCOMP_PASSIVE > 0 )
