@@ -54,6 +54,7 @@ GPU_DEVICE static void Set_Flux( real flux[], const real val[], const real Gamma
 //                PassiveFloor      : Bitwise flag to specify the passive scalars to be floored
 //                EoS_DensEint2Pres : EoS routine to compute the gas pressure
 //                EoS_DensPres2CSqr : EoS routine to compute the sound speed squared
+//                EoS_General       : General EoS routine
 //                EoS_AuxArray_*    : Auxiliary arrays for the EoS routines
 //                EoS_Table         : EoS tables
 //
@@ -62,8 +63,8 @@ GPU_DEVICE static void Set_Flux( real flux[], const real val[], const real Gamma
 GPU_DEVICE
 void Hydro_RiemannSolver_Exact( const int XYZ, real Flux_Out[], const real L_In[], const real R_In[],
                                 const real MinDens, const real MinPres, const long PassiveFloor, const EoS_DE2P_t EoS_DensEint2Pres,
-                                const EoS_DP2C_t EoS_DensPres2CSqr, const double EoS_AuxArray_Flt[],
-                                const int EoS_AuxArray_Int[], const real* const EoS_Table[EOS_NTABLE_MAX] )
+                                const EoS_DP2C_t EoS_DensPres2CSqr, const EoS_GENE_t EoS_General, const double EoS_AuxArray_Flt[],
+                                const int EoS_AuxArray_Int[], const real *const EoS_Table[EOS_NTABLE_MAX] )
 {
 
 // check
