@@ -364,6 +364,7 @@ void GREP_Compute_Profile( const int lv, const int Sg, const PatchType_t PatchTy
 
    const bool   RemoveEmpty_No = false;
    const double PrepTime_No    = -1.0;
+   const bool   GetSigma_No    = false;
    const int    NVar           = 4;
    const int    Lv_Stored      = ( PatchType == PATCH_LEAF ) ? lv : NLEVEL;
 
@@ -399,7 +400,7 @@ void GREP_Compute_Profile( const int lv, const int Sg, const PatchType_t PatchTy
 
 
    Aux_ComputeProfile( Prof_List, GREP_Center, GREP_MAXRADIUS, GREP_MINBINSIZE, GREP_LOGBIN,
-                       GREP_LOGBINRATIO, RemoveEmpty_No, TVar, NVar, lv, lv, PatchType, PrepTime_No );
+                       GREP_LOGBINRATIO, RemoveEmpty_No, TVar, NVar, lv, lv, PatchType, PrepTime_No, GetSigma_No );
 
 } // FUNCTION : GREP_Compute_Profile
 
