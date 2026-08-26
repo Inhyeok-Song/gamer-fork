@@ -7,15 +7,20 @@
 
 #if ( MODEL == HYDRO  &&  defined DUAL_ENERGY  &&  !defined SRHD )
 
+#if ( EOS == EOS_NUCLEAR )
+#include "Global.h"
+#include "NuclearEoS.h"
+#endif
+
 
 
 // internal functions
 #ifdef __CUDACC__
 GPU_DEVICE
-static real Hydro_DensPres2Dual( const real Dens, const real Pres, const real Gamma_m1 );
+static real Hydro_DensPres2Dual( const real Dens, const real Pres, const real Passive[], const EoS_t *EoS, const real Gamma_m1 );
 GPU_DEVICE
-static real Hydro_DensDual2Pres( const real Dens, const real Dual, const real Gamma_m1,
-                                 const bool CheckMinPres, const real MinPres );
+real Hydro_DensDual2Pres( const real Dens, const real Dual, const real Passive[], const EoS_t *EoS,
+                          const real Gamma_m1, const bool CheckMinPres, const real MinPres, real *EintOut );
 #endif
 
 
@@ -44,6 +49,7 @@ static real Hydro_DensDual2Pres( const real Dens, const real Dual, const real Ga
 //                MomX/Y/Z         : Momentum density
 //                Etot             : Total energy density
 //                Dual             : Dual-energy variable
+//                Passive          : Passive scalars
 //                DE_Status        : Assigned to (DE_UPDATED_BY_ETOT / DE_UPDATED_BY_DUAL / DE_UPDATED_BY_MIN_PRES)
 //                                   to indicate whether this cell is updated by the total energy, dual-energy variable,
 //                                   or pressure floor (MinPres)
@@ -54,6 +60,7 @@ static real Hydro_DensDual2Pres( const real Dens, const real Dual, const real Ga
 //                                       for which we don't want to enable this option
 //                MinPres          : Minimum allowed pressure
 //                PassiveFloor     : Bitwise flag to specify the passive scalars to be floored
+//                EoS              : EoS object
 //                DualEnergySwitch : if ( Eint/(Ekin+Emag) < DualEnergySwitch ) ==> correct Eint and Etot
 //                                   else                                       ==> correct Dual
 //                Emag             : Magnetic energy density (0.5*B^2) --> for MHD only
@@ -62,9 +69,9 @@ static real Hydro_DensDual2Pres( const real Dens, const real Dual, const real Ga
 //-------------------------------------------------------------------------------------------------------
 GPU_DEVICE
 void Hydro_DualEnergyFix( const real Dens, const real MomX, const real MomY, const real MomZ,
-                          real &Etot, real &Dual, char &DE_Status, const real Gamma_m1, const real _Gamma_m1,
-                          const bool CheckMinPres, const real MinPres, const long PassiveFloor, const real DualEnergySwitch,
-                          const real Emag )
+                          real &Etot, real &Dual, const real Passive[], char &DE_Status, const real Gamma_m1,
+                          const real _Gamma_m1, const bool CheckMinPres, const real MinPres, const long PassiveFloor,
+                          const EoS_t *EoS, const real DualEnergySwitch, const real Emag )
 {
 
    const bool CheckMinPres_No = false;
@@ -89,8 +96,20 @@ void Hydro_DualEnergyFix( const real Dens, const real MomX, const real MomY, con
    {
 //    correct total energy
 //    --> we will apply pressure floor later
-      Pres      = Hydro_DensDual2Pres( Dens, Dual, Gamma_m1, CheckMinPres_No, NULL_REAL );
+      real EintOut = 0.0;
+      Pres         = Hydro_DensDual2Pres( Dens, Dual, Passive, EoS, Gamma_m1, CheckMinPres_No,
+                                          NULL_REAL, &EintOut );
+#     if   ( DUAL_ENERGY == DE_ENPY )
+#     if   ( EOS == EOS_GAMMA )
       Eint      = Pres*_Gamma_m1;
+#     elif ( EOS == EOS_NUCLEAR )
+      Eint      = EintOut;
+#     endif
+
+#     elif ( DUAL_ENERGY == DE_EINT )
+      Eint      = Dual;
+#     endif
+
       Etot      = Enth + Eint;
       DE_Status = DE_UPDATED_BY_DUAL;
    }
@@ -98,8 +117,47 @@ void Hydro_DualEnergyFix( const real Dens, const real MomX, const real MomY, con
    else
    {
 //    correct dual-energy variable
+#     if   ( EOS == EOS_GAMMA )
       Pres      = Eint*Gamma_m1;
-      Dual      = Hydro_DensPres2Dual( Dens, Pres, Gamma_m1 );
+
+#     elif ( EOS == EOS_NUCLEAR )
+      const int  NTarget = ( DUAL_ENERGY == DE_ENPY ) ? 2 : 1;
+            int  In_Int[NTarget+1];
+            real In_Flt[4], Out_Flt[NTarget+1];
+
+      In_Flt[0] = Dens;
+      In_Flt[1] = Eint;
+      In_Flt[2] = Passive[ YE - NCOMP_FLUID ] / Dens;
+      #  ifdef TEMP_IG
+      In_Flt[3] = Passive[ TEMP_IG - NCOMP_FLUID ];
+      #  endif
+
+      In_Int[0] = NTarget;
+      In_Int[1] = NUC_VAR_IDX_PRES;
+#     if ( DUAL_ENERGY == DE_ENPY )
+      In_Int[2] = NUC_VAR_IDX_ENTR;
+#     endif
+
+#     ifdef __CUDACC__
+      EoS->General_FuncPtr( NUC_MODE_ENGY, Out_Flt, In_Flt, In_Int, EoS->AuxArrayDevPtr_Flt, EoS->AuxArrayDevPtr_Int, EoS->Table );
+#     else
+      EoS_General_CPUPtr  ( NUC_MODE_ENGY, Out_Flt, In_Flt, In_Int, EoS_AuxArray_Flt,        EoS_AuxArray_Int,        h_EoS_Table );
+#     endif
+      Pres = Out_Flt[0];
+#     endif // #elif ( EOS == EOS_NUCLEAR )
+
+
+//    2. Correct dual-energy variable based on mode
+#     if   ( DUAL_ENERGY == DE_ENPY )
+#     if   ( EOS == EOS_GAMMA )
+      Dual = Hydro_DensPres2Dual( Dens, Pres, Passive, EoS, Gamma_m1 );
+#     elif ( EOS == EOS_NUCLEAR )
+      Dual = Out_Flt[1];
+#     endif
+#     elif ( DUAL_ENERGY == DE_EINT )
+      Dual = Eint;
+#     endif
+
       DE_Status = DE_UPDATED_BY_ETOT;
    } // if ( Eint/Enth < DualEnergySwitch ) ... else ...
 
@@ -107,12 +165,24 @@ void Hydro_DualEnergyFix( const real Dens, const real MomX, const real MomY, con
 // apply pressure floor
    if ( CheckMinPres  &&  Pres < MinPres )
    {
+//    update pressure to the floor value to ensure consistency
       Pres = MinPres;
-      Eint = Pres*_Gamma_m1;
+
+#     ifdef __CUDACC__
+      Eint = EoS->DensPres2Eint_FuncPtr( Dens, Pres, Passive, EoS->AuxArrayDevPtr_Flt, EoS->AuxArrayDevPtr_Int, EoS->Table );
+#     else
+      Eint = EoS_DensPres2Eint_CPUPtr  ( Dens, Pres, Passive, EoS_AuxArray_Flt,        EoS_AuxArray_Int,        h_EoS_Table );
+#     endif
 
 //    ensure that both energy and dual-energy variable are consistent with the pressure floor
       Etot      = Enth + Eint;
-      Dual      = Hydro_DensPres2Dual( Dens, Pres, Gamma_m1 );
+
+#     if   ( DUAL_ENERGY == DE_ENPY )
+      Dual      = Hydro_DensPres2Dual( Dens, Pres, Passive, EoS, Gamma_m1 );
+#     elif ( DUAL_ENERGY == DE_EINT )
+      Dual      = Eint;
+#     endif
+
       DE_Status = DE_UPDATED_BY_MIN_PRES;
    }
 
@@ -136,6 +206,8 @@ void Hydro_DualEnergyFix( const real Dens, const real MomX, const real MomY, con
 //                MomX/Y/Z          : Momentum density
 //                Engy              : Total energy density
 //                Emag              : Magnetic energy density (0.5*B^2) --> for MHD only
+//                Passive           : Passive scalars
+//                EoS               : EoS object
 //                EoS_DensEint2Pres : EoS routine to compute the gas pressure
 //                EoS_AuxArray_*    : Auxiliary arrays for EoS_DensEint2Pres()
 //                EoS_Table         : EoS tables
@@ -144,22 +216,22 @@ void Hydro_DualEnergyFix( const real Dens, const real MomX, const real MomY, con
 // Return      :  Dual
 //-------------------------------------------------------------------------------------------------------
 real Hydro_Con2Dual( const real Dens, const real MomX, const real MomY, const real MomZ, const real Engy,
-                     const real Emag, const EoS_DE2P_t EoS_DensEint2Pres, const double EoS_AuxArray_Flt[],
-                     const int EoS_AuxArray_Int[], const real *const EoS_Table[EOS_NTABLE_MAX],
-                     const long PassiveFloor )
+                     const real Emag, const real Passive[], const EoS_t *const EoS,
+                     const EoS_DE2S_t EoS_DensEint2Entr, const double EoS_AuxArray_Flt[], const int EoS_AuxArray_Int[],
+                     const real *const EoS_Table[EOS_NTABLE_MAX], const long PassiveFloor )
 {
 
-// currently this function does NOT apply pressure floor when calling Hydro_Con2Pres()
-   const bool CheckMinPres_No = false;
+// calculate the dual-energy variable
+   const bool CheckMin_No = false;
+   real Dual;
 
-   real Pres, Dual;
-
-// calculate pressure and convert it to the dual-energy variable
-// --> note that DE_ENPY only works with EOS_GAMMA, which does not involve passive scalars
-   Pres = Hydro_Con2Pres( Dens, MomX, MomY, MomZ, Engy, NULL, CheckMinPres_No, NULL_REAL, PassiveFloor, Emag,
-                          EoS_DensEint2Pres, NULL, NULL, EoS_AuxArray_Flt, EoS_AuxArray_Int,
-                          EoS_Table, NULL );
-   Dual = Hydro_DensPres2Dual( Dens, Pres, EoS_AuxArray_Flt[1] );
+#  if   ( DUAL_ENERGY == DE_ENPY )
+   Dual = Hydro_Con2Entr( Dens, MomX, MomY, MomZ, Engy, Passive, CheckMin_No, NULL_REAL, PassiveFloor,
+                          Emag, EoS_DensEint2Entr, EoS_AuxArray_Flt, EoS_AuxArray_Int, EoS_Table );
+#  elif ( DUAL_ENERGY == DE_EINT )
+   Dual = Hydro_Con2Eint( Dens, MomX, MomY, MomZ, Engy, CheckMin_No, NULL_REAL, PassiveFloor, Emag,
+                          NULL, NULL, NULL, NULL, NULL );
+#  endif
 
    return Dual;
 
@@ -179,22 +251,57 @@ real Hydro_Con2Dual( const real Dens, const real MomX, const real MomY, const re
 //
 // Parameter   :  Dens     : Mass density
 //                Pres     : Pressure
+//                Passive  : Passive scalars
+//                EoS      : EoS object
 //                Gamma_m1 : Adiabatic index - 1.0
 //
 // Return      :  Dual
 //-------------------------------------------------------------------------------------------------------
 GPU_DEVICE
-real Hydro_DensPres2Dual( const real Dens, const real Pres, const real Gamma_m1 )
+real Hydro_DensPres2Dual( const real Dens, const real Pres, const real Passive[], const EoS_t *EoS, const real Gamma_m1 )
 {
 
    real Dual;
 
 // calculate the dual-energy variable
+#  if   ( EOS == EOS_GAMMA )
 #  if   ( DUAL_ENERGY == DE_ENPY )
    Dual = Pres*POW( Dens, -Gamma_m1 );
 #  elif ( DUAL_ENERGY == DE_EINT )
-#  error : DE_EINT is NOT supported yet !!
+   Dual = Pres / Gamma_m1;
 #  endif
+
+#  elif ( EOS == EOS_NUCLEAR )
+   const int  NTarget = 1;
+         int  In_Int[NTarget+1];
+         real In_Flt[4], Out_Flt[NTarget+1];
+
+   In_Flt[0] = Dens;
+   In_Flt[1] = Pres;
+   In_Flt[2] = Passive[ YE - NCOMP_FLUID ] / Dens;
+#  ifdef TEMP_IG
+   In_Flt[3] = Passive[ TEMP_IG - NCOMP_FLUID ];
+#  endif
+
+   In_Int[0] = NTarget;
+#  if   ( DUAL_ENERGY == DE_ENPY )
+   In_Int[1] = NUC_VAR_IDX_ENTR;
+#  elif ( DUAL_ENERGY == DE_EINT )
+   In_Int[1] = NUC_VAR_IDX_EORT;
+#  endif
+
+#  ifdef __CUDACC__
+   EoS->General_FuncPtr( NUC_MODE_PRES, Out_Flt, In_Flt, In_Int, EoS->AuxArrayDevPtr_Flt, EoS->AuxArrayDevPtr_Int, EoS->Table );
+#  else
+   EoS_General_CPUPtr  ( NUC_MODE_PRES, Out_Flt, In_Flt, In_Int, EoS_AuxArray_Flt,        EoS_AuxArray_Int,        h_EoS_Table );
+#  endif
+
+#  if   ( DUAL_ENERGY == DE_ENPY )
+   Dual = Out_Flt[0];
+#  elif ( DUAL_ENERGY == DE_EINT )
+   Dual = ( NUC_TABLE_MODE == NUC_TABLE_MODE_TEMP ) ? Out_Flt[0] : Out_Flt[1];
+#  endif
+#  endif // #elif ( EOS == EOS_NUCLEAR )
 
 // apply a floor value
    Dual = FMAX( Dual, TINY_NUMBER );
@@ -216,27 +323,69 @@ real Hydro_DensPres2Dual( const real Dens, const real Pres, const real Gamma_m1 
 //
 // Parameter   :  Dens         : Mass density
 //                Dual         : Dual-energy variable
+//                Passive      : Passive scalars
+//                EoS          : EoS object
 //                Gamma_m1     : Adiabatic index - 1.0
 //                CheckMinPres : Return Hydro_CheckMinPres()
 //                               --> In some cases we actually want to check if pressure becomes unphysical,
 //                                   for which we don't want to enable this option
 //                MinPres      : Minimum allowed pressure
+//                EintOut      : Pointer to store the internal energy (for EOS_NUCLEAR only)
 //
 // Return      :  Pres
 //-------------------------------------------------------------------------------------------------------
 GPU_DEVICE
-real Hydro_DensDual2Pres( const real Dens, const real Dual, const real Gamma_m1,
-                          const bool CheckMinPres, const real MinPres )
+real Hydro_DensDual2Pres( const real Dens, const real Dual, const real Passive[], const EoS_t *EoS,
+                          const real Gamma_m1, const bool CheckMinPres, const real MinPres, real *EintOut )
 {
 
    real Pres;
 
 // calculate pressure
+#  if   ( EOS == EOS_GAMMA )
 #  if   ( DUAL_ENERGY == DE_ENPY )
    Pres = Dual*POW( Dens, Gamma_m1 );
 #  elif ( DUAL_ENERGY == DE_EINT )
-#  error : DE_EINT is NOT supported yet !!
+   Pres = Dual*Gamma_m1;
 #  endif
+
+#  elif ( EOS == EOS_NUCLEAR )
+#  if   ( DUAL_ENERGY == DE_ENPY )
+   const int  NTarget = ( NUC_TABLE_MODE == NUC_TABLE_MODE_TEMP ) ? 2 : 1;
+   const int  NucMode = NUC_MODE_ENTR;
+#  elif ( DUAL_ENERGY == DE_EINT )
+   const int  NTarget = 1;
+   const int  NucMode = NUC_MODE_ENGY;
+#  endif
+         int  In_Int[NTarget+1];
+         real In_Flt[4], Out_Flt[NTarget+1];
+
+   In_Flt[0] = Dens;
+   In_Flt[1] = Dual;
+   In_Flt[2] = Passive[ YE - NCOMP_FLUID ] / Dens;
+#  ifdef TEMP_IG
+   In_Flt[3] = Passive[ TEMP_IG - NCOMP_FLUID ];
+#  endif
+
+   In_Int[0] = NTarget;
+   In_Int[1] = NUC_VAR_IDX_PRES;
+#  if   ( DUAL_ENERGY == DE_ENPY  &&  NUC_TABLE_MODE == NUC_TABLE_MODE_TEMP )
+   In_Int[2] = NUC_VAR_IDX_EORT;
+#  endif
+
+#  ifdef __CUDACC__
+   EoS->General_FuncPtr( NucMode, Out_Flt, In_Flt, In_Int, EoS->AuxArrayDevPtr_Flt, EoS->AuxArrayDevPtr_Int, EoS->Table );
+#  else
+   EoS_General_CPUPtr  ( NucMode, Out_Flt, In_Flt, In_Int, EoS_AuxArray_Flt,        EoS_AuxArray_Int,        h_EoS_Table );
+#  endif
+
+   Pres = Out_Flt[0];
+#  if ( DUAL_ENERGY == DE_ENPY )
+   if ( EintOut != NULL ) {
+      *EintOut = Out_Flt[1];
+   }
+#  endif
+#  endif // elif ( EOS == EOS_NUCLEAR )
 
 // apply a floor value
    if ( CheckMinPres )  Pres = Hydro_CheckMinPres( Pres, MinPres );
@@ -244,6 +393,218 @@ real Hydro_DensDual2Pres( const real Dens, const real Dual, const real Gamma_m1,
    return Pres;
 
 } // FUNCTION : Hydro_DensDual2Pres
+
+
+
+
+
+# if ( FLU_SCHEME == MHM  ||  FLU_SCHEME == MHM_RP )  &&  ( DUAL_ENERGY == DE_EINT )
+//-------------------------------------------------------------------------------------------------------
+// Function    : Hydro_DualEnergy_AdiabaticWork_HalfStep_MHM_RP
+//
+// Description : Add the adiabatic work term to update the dual energy for the half-step solution of MHM_RP
+//
+// Note        : 1. MHM should not use this function
+//               2. Work w/ and w/o MHD
+//               3. Invoked by Hydro_RiemannPredict()
+//
+// Reference   : [1] Bryan et al., ApJS 211, 19 (2012); doi:10.1088/0067-0049/211/2/19
+//               [2] A simple dual implementation to track pressure accurately, S. Li, Astronum Proceeding, 385, 273 (2007)
+//
+// Parameter   : OneCell     : Single-cell fluid array to store the updated cell-centered dual energy
+//               g_ConVar_In : Array storing the input conserved variables
+//               g_Flux_Half : Array storing the input face-centered fluxes
+//                             --> Accessed with the stride didx_flux
+//               idx_in      : Index of accessing g_ConVar_In[]
+//               didx_in     : Index increment of g_ConVar_In[]
+//               idx_flux    : Index of accessing g_flux_Half[]
+//               didx_flux   : Index increment of g_Flux_Half[]
+//               dt_dh2      : 0.5 * dt / dh
+//               EoS         : EoS object
+//
+// Return      : OneCell[DUAL]
+//-------------------------------------------------------------------------------------------------------
+GPU_DEVICE
+void Hydro_DualEnergy_AdiabaticWork_HalfStep_MHM_RP( real OneCell[NCOMP_TOTAL_PLUS_MAG],
+                                                     const real g_ConVar_In[][ CUBE(FLU_NXT) ],
+                                                     const real g_Flux_Half[][NCOMP_TOTAL_PLUS_MAG][ CUBE(N_FC_FLUX) ],
+                                                     const int idx_in, const int didx_in[3],
+                                                     const int idx_flux, const int didx_flux[3],
+                                                     const real dt_dh2, const EoS_t *EoS )
+{
+// 1. calculate the dual energy pressure
+   real Passive[NCOMP_PASSIVE];
+#  if ( NCOMP_PASSIVE > 0 )
+   for (int v=0; v<NCOMP_PASSIVE; v++)  Passive[v] = g_ConVar_In[NCOMP_FLUID+v][idx_in];
+#  endif
+
+   const real pDual_old = EoS->DensEint2Pres_FuncPtr( g_ConVar_In[DENS][idx_in], g_ConVar_In[DUAL][idx_in], Passive,
+                                                      EoS->AuxArrayDevPtr_Flt, EoS->AuxArrayDevPtr_Int, EoS->Table );
+
+
+// 2. compute \div V using the upwind data; reference: [2]
+   real div_V[3];
+
+   for (int d=0; d<3; d++)
+   {
+#     ifdef MHD
+      const real DensFlux_L = g_Flux_Half[d][DENS][ idx_flux - didx_flux[d] ];
+      const real DensFlux_R = g_Flux_Half[d][DENS][ idx_flux                ];
+#     else
+      const real DensFlux_L = g_Flux_Half[d][DENS][ idx_flux                ];
+      const real DensFlux_R = g_Flux_Half[d][DENS][ idx_flux + didx_flux[d] ];
+#     endif
+
+      div_V[d]  = ( DensFlux_R > (real)0.0 ) ?
+                  ( DensFlux_R / g_ConVar_In[DENS][ idx_in              ] ) :
+                  ( DensFlux_R / g_ConVar_In[DENS][ idx_in + didx_in[d] ] );
+
+      div_V[d] -= ( DensFlux_L > (real)0.0 ) ?
+                  ( DensFlux_L / g_ConVar_In[DENS][ idx_in - didx_in[d] ] ) :
+                  ( DensFlux_L / g_ConVar_In[DENS][ idx_in              ] );
+   } // for (int d=0; d<3; d++)
+
+
+// 3. unconditionally update the dual energy
+   OneCell[DUAL] -= pDual_old*dt_dh2*( div_V[0] + div_V[1] + div_V[2] );
+
+} // FUNCTION : Hydro_DualEnergy_AdiabaticWork_HalfStep_MHM_RP
+
+
+
+
+//-------------------------------------------------------------------------------------------------------
+// Function    : Hydro_DualEnergy_AddAdiabaticWork_FullStep
+//
+// Description : Add the adiabatic work term to update the dual energy for the full-step solution of MHM_RP/MHM
+//
+// Note        : 1. Shared by both MHM and MHM_RP (but it hasn't been tested for MHM yet)
+//               2. Work w/ and w/o MHD
+//               3. Invoked by CPU/CUFLU_FluidSolver_MHM()
+//
+// Reference   : [1] Bryan et al., ApJS 211, 19 (2012); doi:10.1088/0067-0049/211/2/19
+//               [2] A simple dual implementation to track pressure accurately, S. Li, Astronum Proceeding, 385, 273 (2007)
+//
+// Parameter   : g_PriVar_Half  : Array storing the input cell-centered conserved variables
+//                                --> Accessed with the stride N_HF_VAR
+//                                --> Although its actually allocated size is FLU_NXT^3 since it points to g_PriVar_1PG[]
+//               g_Output       : Array to store the updated fluid data
+//               g_Flux         : Array storing the input face-centered fluxes
+//                                --> Accessed with the array stride N_FL_FLUX even thought its actually
+//                                    allocated size is N_FC_FLUX^3
+//               g_FC_Var       : Array storing the input face-centered conserved variables
+//                                --> Accessed with the array stride N_FC_VAR^3
+//               FracPassive    : true --> input passive scalars are mass fraction instead of density
+//               NFrac          : Number of passive scalars for the option "FracPassive"
+//               FracIdx   `     : Target variable indices for the option "FracPassive"
+//               dt             : Time interval to advance solution
+//               dh             : Cell size
+//               EoS            : EoS object
+//
+// Return      : g_Output[DUAL][]
+//-------------------------------------------------------------------------------------------------------
+GPU_DEVICE
+void Hydro_DualEnergy_AddAdiabaticWork_FullStep( const real g_PriVar_Half[][ CUBE(FLU_NXT) ],
+                                                 real g_Output[][ CUBE(PS2) ],
+                                                 const real g_Flux[][NCOMP_TOTAL_PLUS_MAG][ CUBE(N_FC_FLUX) ],
+                                                 const real g_FC_Var[][NCOMP_TOTAL_PLUS_MAG][ CUBE(N_FC_VAR) ],
+                                                 const bool FracPassive, const int NFrac, const int FracIdx[],
+                                                 const real dt, const real dh, const EoS_t *EoS,
+                                                 const char g_DE_Status[] )
+{
+
+   const int didx_flux[3] = { 1, N_FL_FLUX, SQR(N_FL_FLUX) };
+   const int didx_fc[3]   = { 1, N_FC_VAR,  SQR(N_FC_VAR)  };
+   const real dt_dh       = dt/dh;
+
+   real div_V[3];
+
+   const int size_ij = SQR(PS2);
+   CGPU_LOOP( idx_out, CUBE(PS2) )
+   {
+//    index of the output array
+      const int i_out    = idx_out % PS2;
+      const int j_out    = idx_out % size_ij / PS2;
+      const int k_out    = idx_out / size_ij;
+
+//    index of the flux array
+//    --> for MHD, one additional flux is evaluated along each transverse direction for computing the CT electric field
+#     ifdef MHD
+      const int i_flux   = i_out + 1;
+      const int j_flux   = j_out + 1;
+      const int k_flux   = k_out + 1;
+#     else
+      const int i_flux   = i_out;
+      const int j_flux   = j_out;
+      const int k_flux   = k_out;
+#     endif
+      const int idx_flux = IDX321( i_flux, j_flux, k_flux, N_FL_FLUX, N_FL_FLUX );
+
+//    index of the half-step variables
+      const int i_hf     = i_out + (N_HF_VAR-PS2)/2;
+      const int j_hf     = j_out + (N_HF_VAR-PS2)/2;
+      const int k_hf     = k_out + (N_HF_VAR-PS2)/2;
+      const int idx_hf   = IDX321( i_hf, j_hf, k_hf, N_HF_VAR, N_HF_VAR );
+
+//    index of the face-centered variables
+      const int i_fc     = i_out + 1;
+      const int j_fc     = j_out + 1;
+      const int k_fc     = k_out + 1;
+      const int idx_fc   = IDX321( i_fc, j_fc, k_fc, N_FC_VAR, N_FC_VAR );
+
+//    1. calculate the pressure
+      real Passive[NCOMP_PASSIVE];
+#     if ( NCOMP_PASSIVE > 0 )
+      for (int v=0; v<NCOMP_PASSIVE; v++)   Passive[v] = g_PriVar_Half[NCOMP_FLUID+v][idx_hf];
+      if ( FracPassive )
+         for (int v=0; v<NFrac; v++)   Passive[ FracIdx[v] ] *= g_PriVar_Half[DENS][idx_hf];
+#     endif
+
+      const real pDual_half = EoS->DensEint2Pres_FuncPtr( g_PriVar_Half[DENS][idx_hf], g_PriVar_Half[DUAL][idx_hf], Passive,
+                                                          EoS->AuxArrayDevPtr_Flt, EoS->AuxArrayDevPtr_Int, EoS->Table );
+
+//    2. compute \div V using the upwind data; reference: [2]
+      for (int d=0; d<3; d++)
+      {
+         const int faceL = 2*d;
+         const int faceR = faceL+1;
+
+#        ifdef MHD
+         const real DensFlux_L = g_Flux[d][DENS][ idx_flux - didx_flux[d] ];
+         const real DensFlux_R = g_Flux[d][DENS][ idx_flux                ];
+#        else
+         const real DensFlux_L = g_Flux[d][DENS][ idx_flux                ];
+         const real DensFlux_R = g_Flux[d][DENS][ idx_flux + didx_flux[d] ];
+#        endif
+
+         div_V[d]  = ( DensFlux_R > (real)0.0 ) ?
+                     ( DensFlux_R / g_FC_Var[faceR][DENS][ idx_fc              ] ) :
+                     ( DensFlux_R / g_FC_Var[faceL][DENS][ idx_fc + didx_fc[d] ] );
+
+         div_V[d] -= ( DensFlux_L > (real)0.0 ) ?
+                     ( DensFlux_L / g_FC_Var[faceR][DENS][ idx_fc - didx_fc[d] ] ) :
+                     ( DensFlux_L / g_FC_Var[faceL][DENS][ idx_fc              ] );
+      } // for (int d=0; d<3; d++)
+
+
+//    3. calculate the adiabatic work
+      const real dWork = - pDual_half*dt_dh*( div_V[0] + div_V[1] + div_V[2] );
+
+
+//    4. conditionally apply the work to prevent double-counting
+      if ( g_DE_Status[idx_out] == DE_UPDATED_BY_DUAL )
+      {
+         g_Output[DUAL][idx_out] += dWork;
+         g_Output[ENGY][idx_out] += dWork;
+      }
+
+   } // CGPU_LOOP
+
+#  ifdef __CUDACC__
+   __syncthreads();
+#  endif
+}
+#endif // #if ( FLU_SCHEME == MHM  ||  FLU_SCHEME == MHM_RP )  &&  ( DUAL_ENERGY == DE_EINT )
 
 
 

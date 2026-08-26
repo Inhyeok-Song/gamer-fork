@@ -33,6 +33,9 @@
 
 #include "CUDA_ConstMemory.h"
 
+#ifdef DUAL_ENERGY
+# include "CUFLU_Shared_DualEnergy.cu"
+#endif
 #ifdef COSMIC_RAY
 # include "CUFLU_CosmicRay.cu"
 #ifdef CR_DIFFUSION
@@ -127,6 +130,22 @@ void MHD_UpdateMagnetic( real *g_FC_Bx_Out, real *g_FC_By_Out, real *g_FC_Bz_Out
                          const real g_EC_Ele[][ CUBE(N_EC_ELE) ],
                          const real dt, const real dh, const int NOut, const int NEle, const int Offset_B_In );
 #endif // #ifdef MHD
+
+#if ( DUAL_ENERGY == DE_EINT )
+void Hydro_DualEnergy_AdiabaticWork_HalfStep_MHM_RP( real OneCell[NCOMP_TOTAL_PLUS_MAG],
+                                                     const real g_ConVar_In[][ CUBE(FLU_NXT) ],
+                                                     const real g_Flux_Half[][NCOMP_TOTAL_PLUS_MAG][ CUBE(N_FC_FLUX) ],
+                                                     const int idx_in, const int didx_in[3],
+                                                     const int idx_flux, const int didx_flux[3],
+                                                     const real dt_dh2, const EoS_t *EoS );
+void Hydro_DualEnergy_AddAdiabaticWork_FullStep( const real g_PriVar_Half[][ CUBE(FLU_NXT) ],
+                                                 real g_Output[][ CUBE(PS2) ],
+                                                 const real g_Flux[][NCOMP_TOTAL_PLUS_MAG][ CUBE(N_FC_FLUX) ],
+                                                 const real g_FC_Var[][NCOMP_TOTAL_PLUS_MAG][ CUBE(N_FC_VAR) ],
+                                                 const bool FracPassive, const int NFrac, const int FracIdx[],
+                                                 const real dt, const real dh, const EoS_t *EoS,
+                                                 const char g_DE_Status[] );
+#endif
 
 #ifdef COSMIC_RAY
 void CR_AdiabaticWork_HalfStep_MHM_RP( real OneCell[NCOMP_TOTAL_PLUS_MAG],
@@ -571,6 +590,13 @@ void CPU_FluidSolver_MHM(
                                   PassiveFloor, NormPassive, NNorm, c_NormIdx, &EoS, &s_FullStepFailure,
                                   Iteration, MinMod_MaxIter );
 
+//          add the adiabatic work term to the internal energy for the dual-energy formalism
+#           if ( DUAL_ENERGY == DE_EINT )
+            Hydro_DualEnergy_AddAdiabaticWork_FullStep( g_PriVar_Half_1PG, g_Flu_Array_Out[P], g_FC_Flux_1PG, g_FC_Var_1PG,
+                                                        FracPassive, NFrac, c_FracIdx, dt, dh, &EoS, 
+                                                        g_DE_Array_Out[P] );
+#           endif
+
 //          add the cosmic-ray source term of adiabatic work
 #           ifdef COSMIC_RAY
             CR_AdiabaticWork_FullStep( g_PriVar_Half_1PG, g_Flu_Array_Out[P], g_FC_Flux_1PG, g_FC_Var_1PG,
@@ -840,7 +866,7 @@ void Hydro_RiemannPredict( const real g_ConVar_In[][ CUBE(FLU_NXT) ],
 {
 
    const int  didx_flux[3] = { 1, N_HF_FLUX, SQR(N_HF_FLUX) };
-#  ifdef COSMIC_RAY
+#  if ( defined DUAL_ENERGY  ||  defined COSMIC_RAY )
    const int  didx_in[3]   = { 1, FLU_NXT, SQR(FLU_NXT) };
 #  endif
    const real dt_dh2       = (real)0.5*dt/dh;
@@ -891,6 +917,13 @@ void Hydro_RiemannPredict( const real g_ConVar_In[][ CUBE(FLU_NXT) ],
 //    update the input cell-centered conserved variables with the flux differences
       for (int v=0; v<NCOMP_TOTAL; v++)
          out_con[v] = g_ConVar_In[v][idx_in] - dt_dh2*( dflux[0][v] + dflux[1][v] + dflux[2][v] );
+
+
+//    add the adiabatic work term to the internal energy for the dual-energy formalism
+#     if ( DUAL_ENERGY == DE_EINT )
+      Hydro_DualEnergy_AdiabaticWork_HalfStep_MHM_RP( out_con, g_ConVar_In, g_Flux_Half, idx_in, didx_in,
+                                                      idx_flux, didx_flux, dt_dh2, EoS );
+#     endif
 
 
 //    add the cosmic-ray source term of adiabatic work

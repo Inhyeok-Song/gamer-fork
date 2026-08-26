@@ -393,8 +393,8 @@ void Interpolate_Iterate( real CData[], const int CSize[3], const int CStart[3],
 
          if ( !FData_is_Prim )
             Hydro_DualEnergyFix( Temp[DENS], Temp[MOMX], Temp[MOMY], Temp[MOMZ], Temp[ENGY], Temp[DUAL],
-                                 dummy, EoS_AuxArray_Flt[1], EoS_AuxArray_Flt[2],
-                                 CheckMinPres_No, NULL_REAL, PassiveFloorMask, UseDual2FixEngy, Emag );
+                                 Temp+NCOMP_FLUID, dummy, EoS_AuxArray_Flt[1], EoS_AuxArray_Flt[2],
+                                 CheckMinPres_No, NULL_REAL, PassiveFloorMask, &EoS, UseDual2FixEngy, Emag );
 #        endif
 
 

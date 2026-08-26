@@ -370,9 +370,11 @@ void Hydro_Init_ByFunction_AssignData( const int lv )
 
 //       calculate the dual-energy variable (entropy or internal energy)
 #        ifdef DUAL_ENERGY
+         real Passive[NCOMP_PASSIVE];
+         for (int v=0; v<NCOMP_PASSIVE; v++)   Passive[v] = fluid[NCOMP_FLUID+v];
          fluid[DUAL] = Hydro_Con2Dual( fluid[DENS], fluid[MOMX], fluid[MOMY], fluid[MOMZ], fluid[ENGY], Emag,
-                                       EoS_DensEint2Pres_CPUPtr, EoS_AuxArray_Flt, EoS_AuxArray_Int, h_EoS_Table,
-                                       PassiveFloorMask );
+                                       Passive, &EoS, EoS_DensEint2Entr_CPUPtr, EoS_AuxArray_Flt,
+                                       EoS_AuxArray_Int, h_EoS_Table, PassiveFloorMask );
 #        endif
 
 //       floor and normalize passive scalars
