@@ -229,9 +229,9 @@ void Hydro_FullStepUpdate( const real g_Input[][ CUBE(FLU_NXT) ], real g_Output[
 
       if ( Output_1Cell[DENS] > (real)0.0  &&  Output_1Cell[ENGY]*maxKinOverTot > Ekin )
          Hydro_DualEnergyFix( Output_1Cell[DENS], Output_1Cell[MOMX], Output_1Cell[MOMY], Output_1Cell[MOMZ],
-                              Output_1Cell[ENGY], Output_1Cell[DUAL], g_DE_Status[idx_out],
+                              Output_1Cell[ENGY], Output_1Cell[DUAL], Output_1Cell + NCOMP_FLUID, g_DE_Status[idx_out],
                               EoS->AuxArrayDevPtr_Flt[1], EoS->AuxArrayDevPtr_Flt[2], CheckMinPres_No, NULL_REAL,
-                              PassiveFloor, DualEnergySwitch, Emag );
+                              PassiveFloor, EoS, DualEnergySwitch, Emag );
 #     endif // #ifdef DUAL_ENERGY
 
 

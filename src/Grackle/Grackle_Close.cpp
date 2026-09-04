@@ -134,10 +134,15 @@ void Grackle_Close( const int lv, const int SaveSg, const real_che h_Che_Array[]
 
 //          update the dual-energy variable to be consistent with the updated pressure
 #           ifdef DUAL_ENERGY
-//          DUAL_ENERGY only works with EOS_GAMMA, which does not involve passive scalars
-            Pres = EoS_DensEint2Pres_CPUPtr( Dens, Eint, NULL, EoS_AuxArray_Flt, EoS_AuxArray_Int, h_EoS_Table );
+#           if ( EOS == EOS_NUCLEAR  &&  NCOMP_PASSIVE > 0 )
+            real Passive[NCOMP_PASSIVE];
+            for (int v=0; v<NCOMP_PASSIVE; v++)    Passive[v] = Fluid[ NCOMP_FLUID + v ][k][j][i];
+#           else
+            const real *Passive = NULL;
+#           endif
+            Pres = EoS_DensEint2Pres_CPUPtr( Dens, Eint, Passive, EoS_AuxArray_Flt, EoS_AuxArray_Int, h_EoS_Table );
 #           if   ( DUAL_ENERGY == DE_ENPY )
-            *( fluid[DUAL     ][0][0] + idx_p ) = Hydro_DensPres2Dual( Dens, Pres, EoS_AuxArray_Flt[1] );
+            *( fluid[DUAL     ][0][0] + idx_p ) = Hydro_DensPres2Dual( Dens, Pres, Passive, EoS, EoS_AuxArray_Flt[1] );
 #           elif ( DUAL_ENERGY == DE_EINT )
             *( fluid[DUAL     ][0][0] + idx_p ) = Eint;
 #           endif

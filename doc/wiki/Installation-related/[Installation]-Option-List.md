@@ -50,7 +50,7 @@ disabled). See the "Restriction" of each option carefully.
 | `--mhd`        | `true`, `false`                                            | `false` | Magnetohydrodynamics | - | <a name="--mhd"></a> `MHD` |
 | `--srhd`       | `true`, `false`                                            | `false` | Special relativistic hydrodynamics | Must adopt `--eos=TAUBMATHEWS` | <a name="--srhd"></a> `SRHD` |
 | `--cosmic_ray` | `true`, `false`                                            | `false` | Cosmic rays | Must adopt `--eos=COSMIC_RAY` | <a name="--cosmic_ray"></a> `COSMIC_RAY` |
-| `--eos`        | `GAMMA`, `ISOTHERMAL`, `COSMIC_RAY`, `TAUBMATHEWS`, `USER` | Depend  | [[Equation of state \| equation-of-state]] | The following options only support `GAMMA`: `--flu_scheme=RTVD/CTU`, `--flux=EXACT/ROE`, `--comoving`, `--dual`; see also `--barotropic` | <a name="--eos"></a> `EOS` |
+| `--eos`        | `GAMMA`, `ISOTHERMAL`, `COSMIC_RAY`, `TAUBMATHEWS`, `USER` | Depend  | [[Equation of state \| equation-of-state]] | The following options only support `GAMMA`: `--flu_scheme=RTVD/CTU`, `--flux=EXACT/ROE`, `--comoving`; `--dual` only supports `GAMMA` and `NUCLEAR`; see also `--barotropic` | <a name="--eos"></a> `EOS` |
 | `--barotropic` | `true`, `false`                                            | Depend  | Is `--eos` barotropic? | Must be disabled for `--eos=GAMMA/COSMIC_RAY/TAUBMATHEWS` and enabled for `--eos=ISOTHERMAL` | <a name="--barotropic"></a> `BAROTROPIC_EOS` |
 
 ## ELBDM Options

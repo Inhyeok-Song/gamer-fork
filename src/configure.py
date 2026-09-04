@@ -499,8 +499,8 @@ def load_arguments( sys_setting : SystemSetting ):
     parser.add_argument( "--dual", type=str, metavar="TYPE", gamer_name="DUAL_ENERGY", prefix="DE_",
                          default=NONE_STR, choices=[NONE_STR, "ENPY", "EINT"],
                          depend={"model":"HYDRO"},
-                         constraint={ "ENPY":{"eos":"GAMMA"},
-                                      "EINT":{"eos":"GAMMA"} },
+                         constraint={ "ENPY":{"eos":["GAMMA", "NUCLEAR"]},
+                                      "EINT":{"eos":["GAMMA", "NUCLEAR"]} },
                          help="The dual-energy formalism (ENPY: entropy, EINT: internal energy). "\
                               "Useless for RTVD.\n"
                        )

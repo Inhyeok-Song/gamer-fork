@@ -388,8 +388,15 @@ void Flag_Real( const int lv, const UseLBFunc_t UseLBFunc )
                {
 //                if applicable, compute pressure from the dual-energy variable to reduce the round-off errors
 #                 ifdef DUAL_ENERGY
-                  Pres[k][j][i] = Hydro_DensDual2Pres( Fluid[DENS][k][j][i], Fluid[DUAL][k][j][i],
-                                                       EoS_AuxArray_Flt[1], CheckMinPres_Yes, MIN_PRES );
+
+#                 if ( EOS == EOS_NUCLEAR  &&  NCOMP_PASSIVE > 0 )
+                  real Passive[NCOMP_PASSIVE];
+                  for (int v=0; v<NCOMP_PASSIVE; v++)    Passive[v] = Fluid[ NCOMP_FLUID + v ][k][j][i];
+#                 else
+                  const real *Passive = NULL;
+#                 endif
+                  Pres[k][j][i] = Hydro_DensDual2Pres( Fluid[DENS][k][j][i], Fluid[DUAL][k][j][i], Passive, &EoS,
+                                                       EoS_AuxArray_Flt[1], CheckMinPres_Yes, MIN_PRES, NULL );
 
 #                 else // #ifdef DUAL_ENERGY
 
@@ -400,7 +407,7 @@ void Flag_Real( const int lv, const UseLBFunc_t UseLBFunc )
 #                 else
                   const real Emag = NULL_REAL;
 #                 endif
-#                 if ( EOS != EOS_GAMMA  &&  EOS != EOS_ISOTHERMAL  &&  NCOMP_PASSIVE > 0 )
+#                 if ( EOS == EOS_NUCLEAR  &&  NCOMP_PASSIVE > 0 )
                   real Passive[NCOMP_PASSIVE];
                   for (int v=0; v<NCOMP_PASSIVE; v++)    Passive[v] = Fluid[ NCOMP_FLUID + v ][k][j][i];
 #                 else

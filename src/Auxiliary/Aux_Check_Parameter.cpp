@@ -758,9 +758,8 @@ void Aux_Check_Parameter()
 #   if ( FLU_SCHEME == RTVD )
 #     error : RTVD does NOT support DUAL_ENERGY !!
 #   endif
-
-#   if ( defined DUAL_ENERGY  &&  EOS != EOS_GAMMA )
-#     error : ERROR : DUAL_ENERGY only supports EOS_GAMMA !!
+#   if (  defined DUAL_ENERGY  &&  ( EOS != EOS_GAMMA && EOS != EOS_NUCLEAR )  )
+#     error : ERROR : DUAL_ENERGY only supports EOS_GAMMA/EOS_NUCLEAR !!
 #   endif
 #  endif // #ifdef DUAL_ENERGY
 

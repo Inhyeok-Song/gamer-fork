@@ -446,7 +446,7 @@ bool Unphysical( const real Fluid[], const int CheckMode, const real Emag )
 //    --> in general, MIN_PRES > 0.0 should be sufficient for detecting unphysical dual-energy variable
 //    --> however, the additional check "Fluid[DUAL] < (real)2.0*TINY_NUMBER" is necessary when MIN_PRES == 0.0
 #     ifdef DUAL_ENERGY
-      const real Pres = Hydro_DensDual2Pres( Fluid[DENS], Fluid[DUAL], EoS_AuxArray_Flt[1], NoFloor, NULL_REAL );
+      const real Pres = Hydro_DensDual2Pres( Fluid[DENS], Fluid[DUAL], Fluid+NCOMP_FLUID, &EoS, EoS_AuxArray_Flt[1], NoFloor, NULL_REAL, NULL );
       if ( Pres < (real)MIN_PRES  ||  !Aux_IsFinite(Pres)  ||
            Fluid[DUAL] < (real)2.0*TINY_NUMBER  ||  !Aux_IsFinite(Fluid[DUAL]) )
          return true;
@@ -815,8 +815,8 @@ void CorrectUnphysical( const int lv, const int NPG, const int *PID0_List,
 //                 --> otherwise the pressure floor might disable the 1st-order-flux correction
 #              ifdef DUAL_ENERGY
                Hydro_DualEnergyFix( Update[DENS], Update[MOMX], Update[MOMY], Update[MOMZ], Update[ENGY], Update[DUAL],
-                                    h_DE_Array_F_Out[TID][idx_out], EoS_AuxArray_Flt[1], EoS_AuxArray_Flt[2],
-                                    CorrPres_No, NULL_REAL, PassiveFloorMask, DUAL_ENERGY_SWITCH, Emag_Out );
+                                    Update+NCOMP_FLUID, h_DE_Array_F_Out[TID][idx_out], EoS_AuxArray_Flt[1], EoS_AuxArray_Flt[2],
+                                    CorrPres_No, NULL_REAL, PassiveFloorMask, &EoS, DUAL_ENERGY_SWITCH, Emag_Out );
 #              endif
 
                if ( Unphysical(Update, CheckMinEint, Emag_Out) )
@@ -971,9 +971,9 @@ void CorrectUnphysical( const int lv, const int NPG, const int *PID0_List,
 //              --> otherwise AUTO_REDUCE_DT may not be triggered due to this pressure floor
 #           ifdef DUAL_ENERGY
             Hydro_DualEnergyFix( Update[DENS], Update[MOMX], Update[MOMY], Update[MOMZ], Update[ENGY], Update[DUAL],
-                                 h_DE_Array_F_Out[TID][idx_out], EoS_AuxArray_Flt[1], EoS_AuxArray_Flt[2],
+                                 Update+NCOMP_FLUID, h_DE_Array_F_Out[TID][idx_out], EoS_AuxArray_Flt[1], EoS_AuxArray_Flt[2],
                                  (!AutoReduceDt_Continue && OPT__LAST_RESORT_FLOOR) ? CorrPres_Yes : CorrPres_No,
-                                 MIN_PRES, PassiveFloorMask, DUAL_ENERGY_SWITCH, Emag_Out );
+                                 MIN_PRES, PassiveFloorMask, &EoS, DUAL_ENERGY_SWITCH, Emag_Out );
 
 //          apply internal energy floor if dual-energy formalism is not adopted
 //          --> apply it only when AutoReduceDt_Continue is false

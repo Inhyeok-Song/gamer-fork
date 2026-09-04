@@ -322,12 +322,18 @@ void Aux_Record_GrackleComoving()
 
 //    use the dual-energy variable to calculate the internal energy if applicable
 #     ifdef DUAL_ENERGY
+
+#     if ( EOS == EOS_NUCLEAR  &&  NCOMP_PASSIVE > 0 )
+      real Passive[NCOMP_PASSIVE];
+      for (int v=0; v<NCOMP_PASSIVE; v++)    Passive[v] = amr->patch[FluSg][0][0]->fluid[ NCOMP_FLUID + v ][0][0][0];
+#     else
+      const real *Passive = NULL;
+#     endif
       double Dual  = amr->patch[FluSg][0][0]->fluid[DUAL][0][0][0];
       const bool CheckMinPres_No = false;
-      double Pres  = Hydro_DensDual2Pres( Dens, Dual, EoS_AuxArray_Flt[1], CheckMinPres_No, NULL_REAL );
+      double Pres  = Hydro_DensDual2Pres( Dens, Dual, Passive, &EoS, EoS_AuxArray_Flt[1], CheckMinPres_No, NULL_REAL, NULL );
 
-//    EOS_GAMMA does not involve passive scalars
-      Eint  = EoS_DensPres2Eint_CPUPtr( Dens, Pres, NULL, EoS_AuxArray_Flt, EoS_AuxArray_Int, h_EoS_Table );
+      Eint  = EoS_DensPres2Eint_CPUPtr( Dens, Pres, Passive, EoS_AuxArray_Flt, EoS_AuxArray_Int, h_EoS_Table );
       #     endif // #ifdef DUAL_ENERGY
 
       const double MassRatio_pe = Const_mp / Const_me;
@@ -576,12 +582,19 @@ double Mis_GetTimeStep_GrackleComoving( const int lv, const double dTime_dt )
 
 //    use the dual-energy variable to calculate the internal energy if applicable
 #     ifdef DUAL_ENERGY
+
+#     if ( EOS == EOS_NUCLEAR  &&  NCOMP_PASSIVE > 0 )
+      real Passive[NCOMP_PASSIVE];
+      for (int v=0; v<NCOMP_PASSIVE; v++)    Passive[v] = amr->patch[FluSg][lv][0]->fluid[ NCOMP_FLUID + v ][0][0][0];
+#     else
+      const real *Passive = NULL;
+#     endif
+
       double Dual = amr->patch[FluSg][lv][0]->fluid[DUAL][0][0][0];
       const bool CheckMinPres_No  = false;
-      double     Pres             = Hydro_DensDual2Pres( Dens, Dual, EoS_AuxArray_Flt[1], CheckMinPres_No, NULL_REAL );
+      double     Pres             = Hydro_DensDual2Pres( Dens, Dual, Passive, &EoS, EoS_AuxArray_Flt[1], CheckMinPres_No, NULL_REAL, NULL );
 
-//    EOS_GAMMA does not involve passive scalars
-      Eint  = EoS_DensPres2Eint_CPUPtr( Dens, Pres, NULL, EoS_AuxArray_Flt, EoS_AuxArray_Int, h_EoS_Table );
+      Eint  = EoS_DensPres2Eint_CPUPtr( Dens, Pres, Passive, EoS_AuxArray_Flt, EoS_AuxArray_Int, h_EoS_Table );
 #     endif // #ifdef DUAL_ENERGY
 
       const double MassRatio_pe = Const_mp / Const_me;
