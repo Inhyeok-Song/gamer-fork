@@ -137,7 +137,7 @@ void Grackle_Close( const int lv, const int SaveSg, const real_che h_Che_Array[]
 //          DUAL_ENERGY only works with EOS_GAMMA, which does not involve passive scalars
             Pres = EoS_DensEint2Pres_CPUPtr( Dens, Eint, NULL, EoS_AuxArray_Flt, EoS_AuxArray_Int, h_EoS_Table );
 #           if   ( DUAL_ENERGY == DE_ENPY )
-            *( fluid[DUAL     ][0][0] + idx_p ) = Hydro_DensPres2Dual( Dens, Pres, NULL, EoS, EoS_AuxArray_Flt[1] );
+            *( fluid[DUAL     ][0][0] + idx_p ) = Hydro_DensPres2Dual( Dens, Pres, EoS_AuxArray_Flt[1] );
 #           elif ( DUAL_ENERGY == DE_EINT )
             *( fluid[DUAL     ][0][0] + idx_p ) = Eint;
 #           endif
