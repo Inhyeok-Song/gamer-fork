@@ -672,7 +672,7 @@ void Flu_ResetByUser_API_ClusterMerger( const int lv, const int FluSg, const int
 //             calculate the dual-energy variable
 #              ifdef DUAL_ENERGY
                fluid[DUAL] = Hydro_Con2Dual( fluid[DENS], fluid[MOMX], fluid[MOMY], fluid[MOMZ], fluid[ENGY], fluid+NCOMP_FLUID,
-                                             Emag, EoS_DensEint2Pres_CPUPtr, EoS_AuxArray_Flt, EoS_AuxArray_Int, h_EoS_Table,
+                                             Emag, EoS_DensEint2Entr_CPUPtr, EoS_AuxArray_Flt, EoS_AuxArray_Int, h_EoS_Table,
                                              PassiveFloorMask );
 #              endif
 
