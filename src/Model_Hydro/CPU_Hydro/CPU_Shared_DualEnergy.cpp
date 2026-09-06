@@ -402,12 +402,12 @@ void Hydro_DualEnergy_AdiabaticWork_FullStep( real &Edual,
       const int idx_flux = IDX321( i_flux, j_flux, k_flux, N_FL_FLUX, N_FL_FLUX );
 
 //    index of the g_PriVar_Half array
-#     if ( FLU_SCHEME == CTU || FLU_SCHEME == MHM )
+#     if ( FLU_SCHEME == CTU || ( FLU_SCHEME == MHM && !defined MHD ) )
       const int i_hf     = i_out + FLU_GHOST_SIZE;
       const int j_hf     = j_out + FLU_GHOST_SIZE;
       const int k_hf     = k_out + FLU_GHOST_SIZE;
       const int idx_hf   = IDX321( i_hf, j_hf, k_hf, FLU_NXT, FLU_NXT );
-#     else // MHM_RP
+#     else // MHM_RP or MHM+MHD
       const int i_hf     = i_out + (N_HF_VAR-PS2)/2;
       const int j_hf     = j_out + (N_HF_VAR-PS2)/2;
       const int k_hf     = k_out + (N_HF_VAR-PS2)/2;
