@@ -295,6 +295,7 @@ void Hydro_DualEnergy_AdiabaticWork_HalfStep_MHM_RP( real OneCell[NCOMP_TOTAL_PL
                                                      const int idx_flux, const int didx_flux[3],
                                                      const real dt_dh2, const EoS_t *EoS )
 {
+
 // 1. calculate the dual energy pressure
    real Passive[NCOMP_PASSIVE];
 #  if ( NCOMP_PASSIVE > 0 )
