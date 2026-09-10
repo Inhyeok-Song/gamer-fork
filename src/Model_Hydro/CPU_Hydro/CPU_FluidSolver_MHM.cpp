@@ -909,7 +909,7 @@ void Hydro_RiemannPredict( const real g_ConVar_In[][ CUBE(FLU_NXT) ],
          out_con[v] = g_ConVar_In[v][idx_in] - dt_dh2*( dflux[0][v] + dflux[1][v] + dflux[2][v] );
 
 
-//    add the adiabatic work term to the internal energy for the dual-energy formalism
+//    add the adiabatic work term to the internal energy density for the dual-energy formalism
 #     if ( DUAL_ENERGY == DE_EINT )
       Hydro_DualEnergy_AdiabaticWork_HalfStep_MHM_RP( out_con, g_ConVar_In, g_Flux_Half, idx_in, didx_in,
                                                       idx_flux, didx_flux, dt_dh2, EoS );
