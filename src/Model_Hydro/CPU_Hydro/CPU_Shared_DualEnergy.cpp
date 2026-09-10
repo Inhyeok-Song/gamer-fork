@@ -149,7 +149,6 @@ void Hydro_DualEnergyFix( const real Dens, const real MomX, const real MomY, con
 //                MomX/Y/Z          : Momentum density
 //                Engy              : Total energy density
 //                Emag              : Magnetic energy density (0.5*B^2) --> for MHD only
-//                Passive           : Passive scalars
 //                EoS_DensEint2Entr : EoS routine to compute the gas entropy
 //                EoS_AuxArray_*    : Auxiliary arrays for EoS_DensEint2Entr()
 //                EoS_Table         : EoS tables
@@ -158,9 +157,9 @@ void Hydro_DualEnergyFix( const real Dens, const real MomX, const real MomY, con
 // Return      :  Dual
 //-------------------------------------------------------------------------------------------------------
 real Hydro_Con2Dual( const real Dens, const real MomX, const real MomY, const real MomZ, const real Engy,
-                     const real Emag, const real Passive[], const EoS_DE2S_t EoS_DensEint2Entr,
-                     const double EoS_AuxArray_Flt[], const int EoS_AuxArray_Int[],
-                     const real *const EoS_Table[EOS_NTABLE_MAX], const long PassiveFloor )
+                     const real Emag, const EoS_DE2S_t EoS_DensEint2Entr,  const double EoS_AuxArray_Flt[],
+                     const int EoS_AuxArray_Int[], const real *const EoS_Table[EOS_NTABLE_MAX],
+                     const long PassiveFloor )
 {
 
 // calculate the dual-energy variable
@@ -168,7 +167,8 @@ real Hydro_Con2Dual( const real Dens, const real MomX, const real MomY, const re
    real Dual;
 
 #  if   ( DUAL_ENERGY == DE_ENPY )
-   Dual = Hydro_Con2Entr( Dens, MomX, MomY, MomZ, Engy, Passive, CheckMin_No, NULL_REAL, PassiveFloor,
+// DUAL_ENERGY only works with EOS_GAMMA, which does not involve passive scalars
+   Dual = Hydro_Con2Entr( Dens, MomX, MomY, MomZ, Engy, NULL, CheckMin_No, NULL_REAL, PassiveFloor,
                           Emag, EoS_DensEint2Entr, EoS_AuxArray_Flt, EoS_AuxArray_Int, EoS_Table );
 #  elif ( DUAL_ENERGY == DE_EINT )
    Dual = Hydro_Con2Eint( Dens, MomX, MomY, MomZ, Engy, CheckMin_No, NULL_REAL, PassiveFloor, Emag,
