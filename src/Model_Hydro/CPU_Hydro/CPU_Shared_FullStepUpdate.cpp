@@ -54,7 +54,7 @@ void Hydro_DualEnergy_AdiabaticWork_FullStep( real &Edual,
 //                g_Flux            : Array storing the input face-centered fluxes
 //                                    --> Accessed with the array stride N_FL_FLUX even thought its actually
 //                                        allocated size is N_FC_FLUX^3
-//                g_PriVar_Half     : Array storing the input cell-centered primitive variables (for COSMIC_RAY/DUAL_ENERGY=DE_EINT only)
+//                g_PriVar_Half     : Array storing the input cell-centered primitive variables (for DUAL_ENERGY=DE_EINT only)
 //                                    --> Accessed with the stride N_HF_VAR
 //                                    --> Although its actually allocated size is FLU_NXT^3 since it points to g_PriVar_1PG[]
 //                g_FC_Var          : Array storing the input face-centered conserved variables (for COSMIC_RAY/DUAL_ENERGY=DE_EINT only)
@@ -164,7 +164,7 @@ void Hydro_FullStepUpdate( const real g_Input[][ CUBE(FLU_NXT) ], real g_Output[
 #     endif // #ifdef BAROTROPIC_EOS
 
 
-//    2. add the source term of adiabatic work for the dual-energy formalism (internal energy only)
+//    2. add the source term of adiabatic work for the dual-energy formalism (DUAL_ENERGY==DE_EINT)
 //       --> perform it before Hydro_DualEnergyFix() to ensure consistency between
 //           gas internal energy and the dual-energy variable
 #     if ( DUAL_ENERGY == DE_EINT )
