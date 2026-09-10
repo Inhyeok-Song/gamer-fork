@@ -304,6 +304,7 @@ void Flu_FixUp_Flux( const int lv, const long TVar )
 #                 else
                   CorrVal[ENGY] = Hydro_ConEint2Etot( CorrVal[DENS], CorrVal[MOMX], CorrVal[MOMY], CorrVal[MOMZ], Eint, Emag );
 #                 if   ( DUAL_ENERGY == DE_ENPY )
+//                DE_ENPY only supports EOS_GAMMA, which does not involve passive scalars
                   CorrVal[DUAL] = Hydro_DensPres2Dual( CorrVal[DENS],
                                                        EoS_DensEint2Pres_CPUPtr(CorrVal[DENS],Eint,NULL,
                                                        EoS_AuxArray_Flt,EoS_AuxArray_Int,h_EoS_Table),
