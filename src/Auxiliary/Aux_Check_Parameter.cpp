@@ -759,7 +759,7 @@ void Aux_Check_Parameter()
 #     error : RTVD does NOT support DUAL_ENERGY !!
 #   endif
 
-#   if ( defined DUAL_ENERGY  &&  EOS != EOS_GAMMA )
+#   if ( EOS != EOS_GAMMA )
 #     error : ERROR : DUAL_ENERGY only supports EOS_GAMMA !!
 #   endif
 #  endif // #ifdef DUAL_ENERGY
