@@ -332,7 +332,7 @@ void Hydro_DualEnergy_AdiabaticWork_HalfStep_MHM_RP( real OneCell[NCOMP_TOTAL_PL
 
 
 
-#if (  ( FLU_SCHEME == MHM_RP || FLU_SCHEME == MHM  || FLU_SCHEME == CTU )  &&  DUAL_ENERGY == DE_EINT  )
+#if (  ( FLU_SCHEME == MHM_RP || FLU_SCHEME == MHM || FLU_SCHEME == CTU )  &&  DUAL_ENERGY == DE_EINT  )
 //-------------------------------------------------------------------------------------------------------
 // Function    :  Hydro_DualEnergy_AdiabaticWork_FullStep
 //
@@ -360,7 +360,7 @@ void Hydro_DualEnergy_AdiabaticWork_HalfStep_MHM_RP( real OneCell[NCOMP_TOTAL_PL
 //                dt             : Time interval to advance solution
 //                dh             : Cell size
 //                EoS            : EoS object
-//                idx_out        : Array index associated with Ecr
+//                idx_out        : Array index associated with Edual
 //
 // Return      :  Edual
 //-------------------------------------------------------------------------------------------------------
@@ -378,78 +378,76 @@ void Hydro_DualEnergy_AdiabaticWork_FullStep( real &Edual,
    const int  didx_fc[3]   = { 1, N_FC_VAR,  SQR(N_FC_VAR)  };
    const real dt_dh        = dt/dh;
 
+// index of the output array
+   const int i_out    = idx_out % PS2;
+   const int j_out    = idx_out % size_ij / PS2;
+   const int k_out    = idx_out / size_ij;
+
+// index of the flux array
+// --> for MHD, one additional flux is evaluated along each transverse direction for computing the CT electric field
+#  ifdef MHD
+   const int i_flux   = i_out + 1;
+   const int j_flux   = j_out + 1;
+   const int k_flux   = k_out + 1;
+#  else
+   const int i_flux   = i_out;
+   const int j_flux   = j_out;
+   const int k_flux   = k_out;
+#  endif
+   const int idx_flux = IDX321( i_flux, j_flux, k_flux, N_FL_FLUX, N_FL_FLUX );
+
+// index of the g_PriVar_Half array
+#  if (  FLU_SCHEME == CTU  ||  ( FLU_SCHEME == MHM && !defined MHD )  )
+   const int i_hf     = i_out + FLU_GHOST_SIZE;
+   const int j_hf     = j_out + FLU_GHOST_SIZE;
+   const int k_hf     = k_out + FLU_GHOST_SIZE;
+   const int idx_hf   = IDX321( i_hf, j_hf, k_hf, FLU_NXT, FLU_NXT );
+#  else // MHM_RP or MHM+MHD
+   const int i_hf     = i_out + (N_HF_VAR-PS2)/2;
+   const int j_hf     = j_out + (N_HF_VAR-PS2)/2;
+   const int k_hf     = k_out + (N_HF_VAR-PS2)/2;
+   const int idx_hf   = IDX321( i_hf, j_hf, k_hf, N_HF_VAR, N_HF_VAR );
+#  endif
+
+// index of the face-centered variables
+   const int i_fc     = i_out + 1;
+   const int j_fc     = j_out + 1;
+   const int k_fc     = k_out + 1;
+   const int idx_fc   = IDX321( i_fc, j_fc, k_fc, N_FC_VAR, N_FC_VAR );
+
+// 1. calculate the pressure
+   const real pDual_half = EoS->DensEint2Pres_FuncPtr( g_PriVar[DENS][idx_hf], g_PriVar[DUAL][idx_hf], NULL,
+                                                       EoS->AuxArrayDevPtr_Flt, EoS->AuxArrayDevPtr_Int, EoS->Table );
+
+
+// 2. compute \div V using the upwind data; reference: [2]
+   real div_V[3];
+
+   for (int d=0; d<3; d++)
    {
-//    index of the output array
-      const int i_out    = idx_out % PS2;
-      const int j_out    = idx_out % size_ij / PS2;
-      const int k_out    = idx_out / size_ij;
+      const int faceL = 2*d;
+      const int faceR = faceL+1;
 
-//    index of the flux array
-//    --> for MHD, one additional flux is evaluated along each transverse direction for computing the CT electric field
 #     ifdef MHD
-      const int i_flux   = i_out + 1;
-      const int j_flux   = j_out + 1;
-      const int k_flux   = k_out + 1;
+      const real DensFlux_L = g_Flux[d][DENS][ idx_flux - didx_flux[d] ];
+      const real DensFlux_R = g_Flux[d][DENS][ idx_flux                ];
 #     else
-      const int i_flux   = i_out;
-      const int j_flux   = j_out;
-      const int k_flux   = k_out;
-#     endif
-      const int idx_flux = IDX321( i_flux, j_flux, k_flux, N_FL_FLUX, N_FL_FLUX );
-
-//    index of the g_PriVar_Half array
-#     if (  FLU_SCHEME == CTU  ||  ( FLU_SCHEME == MHM && !defined MHD )  )
-      const int i_hf     = i_out + FLU_GHOST_SIZE;
-      const int j_hf     = j_out + FLU_GHOST_SIZE;
-      const int k_hf     = k_out + FLU_GHOST_SIZE;
-      const int idx_hf   = IDX321( i_hf, j_hf, k_hf, FLU_NXT, FLU_NXT );
-#     else // MHM_RP or MHM+MHD
-      const int i_hf     = i_out + (N_HF_VAR-PS2)/2;
-      const int j_hf     = j_out + (N_HF_VAR-PS2)/2;
-      const int k_hf     = k_out + (N_HF_VAR-PS2)/2;
-      const int idx_hf   = IDX321( i_hf, j_hf, k_hf, N_HF_VAR, N_HF_VAR );
+      const real DensFlux_L = g_Flux[d][DENS][ idx_flux                ];
+      const real DensFlux_R = g_Flux[d][DENS][ idx_flux + didx_flux[d] ];
 #     endif
 
-//    index of the face-centered variables
-      const int i_fc     = i_out + 1;
-      const int j_fc     = j_out + 1;
-      const int k_fc     = k_out + 1;
-      const int idx_fc   = IDX321( i_fc, j_fc, k_fc, N_FC_VAR, N_FC_VAR );
+      div_V[d]  = ( DensFlux_R > (real)0.0 ) ?
+                  ( DensFlux_R / g_FC_Var[faceR][DENS][ idx_fc              ] ) :
+                  ( DensFlux_R / g_FC_Var[faceL][DENS][ idx_fc + didx_fc[d] ] );
 
-//    1. calculate the pressure
-      const real pDual_half = EoS->DensEint2Pres_FuncPtr( g_PriVar[DENS][idx_hf], g_PriVar[DUAL][idx_hf], NULL,
-                                                          EoS->AuxArrayDevPtr_Flt, EoS->AuxArrayDevPtr_Int, EoS->Table );
-
-//    2. compute \div V using the upwind data; reference: [2]
-      real div_V[3];
-
-      for (int d=0; d<3; d++)
-      {
-         const int faceL = 2*d;
-         const int faceR = faceL+1;
-
-#        ifdef MHD
-         const real DensFlux_L = g_Flux[d][DENS][ idx_flux - didx_flux[d] ];
-         const real DensFlux_R = g_Flux[d][DENS][ idx_flux                ];
-#        else
-         const real DensFlux_L = g_Flux[d][DENS][ idx_flux                ];
-         const real DensFlux_R = g_Flux[d][DENS][ idx_flux + didx_flux[d] ];
-#        endif
-
-         div_V[d]  = ( DensFlux_R > (real)0.0 ) ?
-                     ( DensFlux_R / g_FC_Var[faceR][DENS][ idx_fc              ] ) :
-                     ( DensFlux_R / g_FC_Var[faceL][DENS][ idx_fc + didx_fc[d] ] );
-
-         div_V[d] -= ( DensFlux_L > (real)0.0 ) ?
-                     ( DensFlux_L / g_FC_Var[faceR][DENS][ idx_fc - didx_fc[d] ] ) :
-                     ( DensFlux_L / g_FC_Var[faceL][DENS][ idx_fc              ] );
-      } // for (int d=0; d<3; d++)
+      div_V[d] -= ( DensFlux_L > (real)0.0 ) ?
+                  ( DensFlux_L / g_FC_Var[faceR][DENS][ idx_fc - didx_fc[d] ] ) :
+                  ( DensFlux_L / g_FC_Var[faceL][DENS][ idx_fc              ] );
+   } // for (int d=0; d<3; d++)
 
 
-//    3. calculate the adiabatic work
-      Edual -= pDual_half*dt_dh*( div_V[0] + div_V[1] + div_V[2] );
-
-   }
+// 3. calculate the adiabatic work
+   Edual -= pDual_half*dt_dh*( div_V[0] + div_V[1] + div_V[2] );
 
 } // FUNCTION : Hydro_DualEnergy_AdiabaticWork_FullStep
 #endif // #if (  ( FLU_SCHEME == MHM_RP || FLU_SCHEME == MHM  || FLU_SCHEME == CTU )  &&  DUAL_ENERGY == DE_EINT  )
