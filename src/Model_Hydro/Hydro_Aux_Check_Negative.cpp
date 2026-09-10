@@ -45,8 +45,8 @@ void Hydro_Aux_Check_Negative( const int lv, const int Mode, const char *comment
 // --> currently we use TINY_NUMBER as the floor value of entropy
    const real DensCheck = ( CHECK_MODE == 1 ) ? 0.0 : CLOSE_FACTOR*MIN_DENS;
    const real PresCheck = ( CHECK_MODE == 1 ) ? 0.0 : CLOSE_FACTOR*MIN_PRES;
-#  if ( DUAL_ENERGY == DE_ENPY )
-   const real EnpyCheck = ( CHECK_MODE == 1 ) ? 0.0 : CLOSE_FACTOR*TINY_NUMBER;
+#  ifdef DUAL_ENERGY
+   const real DualCheck = ( CHECK_MODE == 1 ) ? 0.0 : CLOSE_FACTOR*TINY_NUMBER;
 #  endif
 
 
@@ -61,7 +61,7 @@ void Hydro_Aux_Check_Negative( const int lv, const int Mode, const char *comment
          {
             for (int v=0; v<NCOMP_TOTAL; v++)   Fluid[v] = amr->patch[ amr->FluSg[lv] ][lv][PID]->fluid[v][k][j][i];
 
-#           if ( DUAL_ENERGY == DE_ENPY )
+#           ifdef DUAL_ENERGY
             Pres = Hydro_DensDual2Pres( Fluid[DENS], Fluid[DUAL], EoS_AuxArray_Flt[1], CheckMinPres_No, NULL_REAL );
 #           else
 #           ifdef MHD
@@ -102,8 +102,8 @@ void Hydro_Aux_Check_Negative( const int lv, const int Mode, const char *comment
 
             if ( Mode == 2  ||  Mode == 3 )
             {
-#              if ( DUAL_ENERGY == DE_ENPY )
-               if ( Pres <= PresCheck  ||  Fluid[DUAL] < EnpyCheck )
+#              ifdef DUAL_ENERGY
+               if ( Pres <= PresCheck  ||  Fluid[DUAL] < DualCheck )
 #              else
                if ( Pres <= PresCheck )
 #              endif
