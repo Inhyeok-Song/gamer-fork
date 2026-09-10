@@ -460,8 +460,12 @@ void Flu_ResetByUser_API_ClusterMerger( const int lv, const int FluSg, const int
 #                 ifdef DUAL_ENERGY
                   const real Pres = Hydro_DensDual2Pres( fluid_acc[DENS], fluid_acc[DUAL], EoS_AuxArray_Flt[1],
                                                          false, NULL_REAL );
+#                 if   ( DUAL_ENERGY == DE_ENPY )
                   const real Eint = EoS_DensPres2Eint_CPUPtr( fluid_acc[DENS], Pres, NULL, EoS_AuxArray_Flt,
                                                               EoS_AuxArray_Int, h_EoS_Table );
+#                 elif ( DUAL_ENERGY == DE_EINT )
+                  const real Eint = fluid_acc[DUAL];
+#                 endif
                   const real Temp = EoS_DensEint2Temp_CPUPtr( fluid_acc[DENS], Eint, NULL, EoS_AuxArray_Flt,
                                                               EoS_AuxArray_Int, h_EoS_Table );
 #                 else
