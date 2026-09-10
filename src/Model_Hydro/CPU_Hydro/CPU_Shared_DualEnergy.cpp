@@ -296,13 +296,8 @@ void Hydro_DualEnergy_AdiabaticWork_HalfStep_MHM_RP( real OneCell[NCOMP_TOTAL_PL
                                                      const real dt_dh2, const EoS_t *EoS )
 {
 
-// 1. calculate the dual energy pressure
-   real Passive[NCOMP_PASSIVE];
-#  if ( NCOMP_PASSIVE > 0 )
-   for (int v=0; v<NCOMP_PASSIVE; v++)  Passive[v] = g_ConVar_In[NCOMP_FLUID+v][idx_in];
-#  endif
-
-   const real pDual_old = EoS->DensEint2Pres_FuncPtr( g_ConVar_In[DENS][idx_in], g_ConVar_In[DUAL][idx_in], Passive,
+// 1. calculate the pressure from the dual-energy variable
+   const real pDual_old = EoS->DensEint2Pres_FuncPtr( g_ConVar_In[DENS][idx_in], g_ConVar_In[DUAL][idx_in], NULL,
                                                       EoS->AuxArrayDevPtr_Flt, EoS->AuxArrayDevPtr_Int, EoS->Table );
 
 
@@ -422,14 +417,7 @@ void Hydro_DualEnergy_AdiabaticWork_FullStep( real &Edual,
       const int idx_fc   = IDX321( i_fc, j_fc, k_fc, N_FC_VAR, N_FC_VAR );
 
 //    1. calculate the pressure
-      real Passive[NCOMP_PASSIVE];
-#     if ( NCOMP_PASSIVE > 0 )
-      for (int v=0; v<NCOMP_PASSIVE; v++)   Passive[v] = g_PriVar_Half[NCOMP_FLUID+v][idx_hf];
-      if ( FracPassive )
-         for (int v=0; v<NFrac; v++)   Passive[ FracIdx[v] ] *= g_PriVar_Half[DENS][idx_hf];
-#     endif
-
-      const real pDual_half = EoS->DensEint2Pres_FuncPtr( g_PriVar_Half[DENS][idx_hf], g_PriVar_Half[DUAL][idx_hf], Passive,
+      const real pDual_half = EoS->DensEint2Pres_FuncPtr( g_PriVar_Half[DENS][idx_hf], g_PriVar_Half[DUAL][idx_hf], NULL,
                                                           EoS->AuxArrayDevPtr_Flt, EoS->AuxArrayDevPtr_Int, EoS->Table );
 
 //    2. compute \div V using the upwind data; reference: [2]
