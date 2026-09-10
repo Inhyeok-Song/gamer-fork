@@ -346,8 +346,8 @@ void Hydro_DualEnergy_AdiabaticWork_HalfStep_MHM_RP( real OneCell[NCOMP_TOTAL_PL
 //                [2] A simple dual implementation to track pressure accurately, S. Li, Astronum Proceeding, 385, 273 (2007)
 //
 // Parameter   :  Edual          : Dual energy to be updated
-//                g_PriVar_Half  : Array storing the input cell-centered conserved variables
-//                                 --> Accessed with the stride N_HF_VAR
+//                g_PriVar       : Array storing the input cell-centered conserved variables
+//                                 --> Accessed with the stride N_HF_VAR for MHM_RP and MHM+MHD, and FLU_NXT for CTU and MHM
 //                                 --> Although its actually allocated size is FLU_NXT^3 since it points to g_PriVar_1PG[]
 //                g_Flux         : Array storing the input face-centered fluxes
 //                                 --> Accessed with the array stride N_FL_FLUX even though its actually
@@ -366,7 +366,7 @@ void Hydro_DualEnergy_AdiabaticWork_HalfStep_MHM_RP( real OneCell[NCOMP_TOTAL_PL
 //-------------------------------------------------------------------------------------------------------
 GPU_DEVICE
 void Hydro_DualEnergy_AdiabaticWork_FullStep( real &Edual,
-                                              const real g_PriVar_Half[][ CUBE(FLU_NXT) ],
+                                              const real g_PriVar[][ CUBE(FLU_NXT) ],
                                               const real g_Flux[][NCOMP_TOTAL_PLUS_MAG][ CUBE(N_FC_FLUX) ],
                                               const real g_FC_Var[][NCOMP_TOTAL_PLUS_MAG][ CUBE(N_FC_VAR) ],
                                               const bool FracPassive, const int NFrac, const int FracIdx[],
@@ -398,7 +398,7 @@ void Hydro_DualEnergy_AdiabaticWork_FullStep( real &Edual,
       const int idx_flux = IDX321( i_flux, j_flux, k_flux, N_FL_FLUX, N_FL_FLUX );
 
 //    index of the g_PriVar_Half array
-#     if ( FLU_SCHEME == CTU || ( FLU_SCHEME == MHM && !defined MHD ) )
+#     if (  FLU_SCHEME == CTU  ||  ( FLU_SCHEME == MHM && !defined MHD )  )
       const int i_hf     = i_out + FLU_GHOST_SIZE;
       const int j_hf     = j_out + FLU_GHOST_SIZE;
       const int k_hf     = k_out + FLU_GHOST_SIZE;
@@ -417,7 +417,7 @@ void Hydro_DualEnergy_AdiabaticWork_FullStep( real &Edual,
       const int idx_fc   = IDX321( i_fc, j_fc, k_fc, N_FC_VAR, N_FC_VAR );
 
 //    1. calculate the pressure
-      const real pDual_half = EoS->DensEint2Pres_FuncPtr( g_PriVar_Half[DENS][idx_hf], g_PriVar_Half[DUAL][idx_hf], NULL,
+      const real pDual_half = EoS->DensEint2Pres_FuncPtr( g_PriVar[DENS][idx_hf], g_PriVar[DUAL][idx_hf], NULL,
                                                           EoS->AuxArrayDevPtr_Flt, EoS->AuxArrayDevPtr_Int, EoS->Table );
 
 //    2. compute \div V using the upwind data; reference: [2]
