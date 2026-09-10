@@ -162,7 +162,7 @@ real Hydro_Con2Dual( const real Dens, const real MomX, const real MomY, const re
                      const long PassiveFloor )
 {
 
-// calculate the dual-energy variable
+// currently this function does NOT apply pressure floor when calling Hydro_Con2Pres()
    const bool CheckMin_No = false;
    real Dual;
 
